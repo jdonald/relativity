@@ -1,0 +1,974 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#14172b">
+<meta name="description" content="Relativity: a pixel-art math game where Albert Einstein, in 1905 Bern, teaches a second grader special relativity.">
+<title>Relativity</title>
+<style>:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}</style>
+</head>
+<body>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Jersey+10&display=swap">
+<style>
+/* Layout: one phone screen stacked like a handheld console. Picture on top, Einstein's speech window, answer keys under the thumbs. */
+:root{
+  color-scheme:dark;
+  --night:#14172b;   /* Bern at blue hour: page ground */
+  --panel:#222747;   /* raised surfaces */
+  --panel-2:#2f3564; /* keys */
+  --line:#4a5190;    /* borders */
+  --win-a:#2b3270;   /* speech window, top */
+  --win-b:#1b2050;   /* speech window, bottom */
+  --sand:#f3ead2;    /* sandstone cream: text */
+  --dim:#aeb1d0;
+  --red:#e2483f;     /* geranium / Swiss red: the one action colour */
+  --red-d:#a12b28;
+  --brass:#f5bd41;   /* clock-tower gold: numbers, stars */
+  --aare:#43c5ae;    /* river turquoise: correct */
+  --ink:#0b0d1a;
+  --display:"Jersey 10","DotGothic16",ui-monospace,Menlo,Consolas,monospace;
+  --body:"DotGothic16",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+[hidden]{display:none !important}
+html,body{height:100%}
+body{margin:0;background:var(--night);color:var(--sand);font-family:var(--body);font-size:16px;line-height:1.25;overflow:hidden;
+  -webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+button{font-family:inherit;cursor:pointer;touch-action:manipulation}
+button:focus-visible{outline:3px solid var(--brass);outline-offset:2px}
+#app{position:relative;height:100%;max-width:560px;margin:0 auto;padding-inline:16px;padding-block:8px;display:flex;flex-direction:column;gap:8px}
+
+#hud{flex:0 0 36px;display:flex;align-items:center;gap:8px}
+#hudTitle{flex:1;min-width:0;font-family:var(--display);font-size:24px;letter-spacing:.04em;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--brass)}
+.chip{font-family:var(--display);font-size:20px;line-height:1;letter-spacing:.03em;color:var(--sand);background:var(--panel);border:2px solid var(--line);border-radius:5px;padding:6px 8px;min-height:36px;white-space:nowrap}
+#bar{flex:0 0 4px;background:var(--panel);border-radius:2px;overflow:hidden}
+#bar i{display:block;height:100%;width:0;background:var(--brass);transition:width .3s}
+
+#stage{flex:0 0 auto;display:flex;justify-content:center}
+#cv{display:block;max-width:100%;border:3px solid var(--ink);outline:2px solid var(--line);border-radius:4px;background:var(--ink)}
+
+#talk{flex:1 1 100px;min-height:100px;max-height:230px;display:flex;gap:10px;align-items:flex-start;overflow:hidden;
+  background:linear-gradient(var(--win-a),var(--win-b));border:3px solid var(--sand);border-radius:8px;box-shadow:inset 0 0 0 2px var(--ink);padding:10px 12px}
+#face{flex:none;width:48px;height:39px;image-rendering:pixelated;image-rendering:crisp-edges;border-radius:4px;background:var(--line)}
+#line{flex:1;min-width:0;margin:0;font-size:17px;line-height:22px;text-wrap:pretty}
+#talk.cine #line{font-size:20px;line-height:27px}
+#talk.tight #line{font-size:15px;line-height:18px}
+#line .rest{visibility:hidden}
+
+#ctl{flex:0 0 auto;margin-top:auto;display:flex;flex-direction:column;gap:8px}
+#expr{font-family:var(--display);font-size:40px;line-height:1;min-height:70px;display:flex;align-items:center;justify-content:center;gap:.2em;white-space:nowrap;overflow:hidden;color:var(--sand)}
+#expr span{display:inline-flex;align-items:center;gap:.16em}
+#expr .w{font-size:.6em;color:var(--dim)}
+#expr sup{align-self:center;font-size:.55em;margin-left:-.22em;line-height:1;transform:translateY(-.62em)}
+.fr{display:inline-flex;flex-direction:column;align-items:center;gap:0;font-size:.7em;line-height:1}
+#expr .fr{flex-direction:column;gap:0}
+.fr b{font-weight:400;display:inline-flex;justify-content:center;min-width:1em;padding:0 .15em .05em;border-bottom:.09em solid currentColor}
+.fr i{font-style:normal;display:inline-flex;justify-content:center;padding:.07em .15em 0}
+.rt{align-items:stretch !important;gap:0 !important}
+.rt svg{width:.42em;height:auto;flex:none;overflow:visible}
+.rt>span{border-top:.08em solid currentColor;padding:.1em .12em 0 .05em}
+.q{min-width:1.25em;height:1.2em;padding:0 .15em;justify-content:center;border:.08em solid var(--brass);border-radius:.12em;background:var(--ink);color:var(--brass)}
+.q.empty{color:var(--line)}
+.q.ok{border-color:var(--aare);color:var(--aare)}
+.q.bad{animation:shake .3s}
+@keyframes shake{25%{transform:translateX(-5px)}75%{transform:translateX(5px)}}
+
+#pad{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.key{height:50px;padding:0;font-family:var(--display);font-size:32px;line-height:1;color:var(--sand);background:var(--panel-2);border:2px solid var(--line);border-bottom-width:5px;border-radius:6px;display:flex;align-items:center;justify-content:center}
+.key:active{transform:translateY(2px);border-bottom-width:3px}
+.key.go{background:var(--red);border-color:var(--red-d);color:#fff}
+.key svg{width:26px;height:20px}
+.big{height:56px;width:100%;font-family:var(--display);font-size:30px;letter-spacing:.06em;line-height:1;color:#fff;background:var(--red);border:2px solid var(--red-d);border-bottom-width:6px;border-radius:8px}
+.big:active{transform:translateY(2px);border-bottom-width:4px}
+.big.alt{background:var(--panel-2);border-color:var(--line);color:var(--sand)}
+#row{display:flex;gap:8px}
+#row .big{font-size:26px;letter-spacing:.03em;white-space:nowrap;padding:0 4px}
+#choices{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.choice{height:74px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--sand);background:var(--panel-2);border:2px solid var(--line);border-bottom-width:5px;border-radius:8px;font-family:var(--display);font-size:34px}
+.choice small{font-size:16px;line-height:1;color:var(--dim)}
+.choice:disabled{opacity:.5}
+
+#map{position:absolute;inset:0;z-index:5;background:var(--night);padding-inline:16px;padding-block:10px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.map-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#map h2{font-family:var(--display);font-weight:400;font-size:34px;line-height:1;letter-spacing:.05em;margin:0;color:var(--brass)}
+#map h3{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.12em;color:var(--dim);margin:6px 0 0}
+.lv-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lv{display:flex;align-items:center;gap:8px;text-align:left;min-height:58px;padding:8px;color:var(--sand);background:var(--panel);border:2px solid var(--line);border-radius:6px}
+.lv b{flex:none;min-width:30px;text-align:center;font-family:var(--display);font-weight:400;font-size:30px;line-height:1;color:var(--brass)}
+.lv span{flex:1;min-width:0;font-size:14px;line-height:1.15}
+.lv em{display:flex;gap:2px;margin-top:4px;font-style:normal;font-size:11px;color:var(--dim);height:12px}
+.lv em svg{width:12px;height:12px}
+.lv:disabled{opacity:.45}
+.lv.on{border-color:var(--brass);background:var(--panel-2)}
+.vlist{display:grid;gap:8px}
+.vlist .lv b{font-size:22px;min-width:22px}
+#map p{margin:0;font-size:14px;line-height:1.3;color:var(--dim)}
+@media (prefers-reduced-motion:reduce){.q.bad{animation:none}#bar i{transition:none}}
+</style>
+
+<div id="app">
+  <header id="hud">
+    <div id="hudTitle">Relativity</div>
+    <button class="chip" id="btnSnd" type="button" aria-label="Sound on or off">Sound</button>
+    <button class="chip" id="btnMap" type="button">Levels</button>
+  </header>
+  <div id="bar"><i></i></div>
+  <div id="stage"><canvas id="cv" width="360" height="256" aria-label="Game picture"></canvas></div>
+  <section id="talk" aria-live="polite">
+    <img id="face" alt="Einstein" width="48" height="39">
+    <p id="line"></p>
+  </section>
+  <section id="ctl">
+    <div id="expr" hidden></div>
+    <div id="pad" hidden>
+      <button class="key" data-k="1" type="button">1</button><button class="key" data-k="2" type="button">2</button><button class="key" data-k="3" type="button">3</button><button class="key" data-k="4" type="button">4</button><button class="key" data-k="5" type="button">5</button>
+      <button class="key" data-k="del" type="button" aria-label="Erase"><svg viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 2h15v16H9L2 10z"/><path d="M13 7l6 6M19 7l-6 6"/></svg></button>
+      <button class="key" data-k="6" type="button">6</button><button class="key" data-k="7" type="button">7</button><button class="key" data-k="8" type="button">8</button><button class="key" data-k="9" type="button">9</button><button class="key" data-k="0" type="button">0</button>
+      <button class="key go" data-k="go" type="button">GO</button>
+    </div>
+    <div id="choices" hidden></div>
+    <button class="big" id="next" type="button" hidden>Next</button>
+    <div id="row" hidden><button class="big" id="b1" type="button">Play</button><button class="big alt" id="b2" type="button">Levels</button></div>
+  </section>
+  <div id="map" hidden></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const cv=$('cv'),ctx=cv.getContext('2d');
+const W=180,H=128,TAU=Math.PI*2;
+let S=2,NOW=0;
+const FD='"Jersey 10","DotGothic16",ui-monospace,Menlo,monospace',FB=FD;
+const RM=!!(window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches);
+const clamp=(v,a,b)=>v<a?a:v>b?b:v,ease=u=>u*u*(3-2*u);
+const rnd=i=>{const x=Math.sin(i*127.1+311.7)*43758.5453;return x-Math.floor(x)};
+
+/* ================= drawing primitives (art units, 180 x 128) ================= */
+function R(x,y,w,h,c){ctx.fillStyle=c;const a=Math.round(x*S),b=Math.round(y*S);ctx.fillRect(a,b,Math.max(1,Math.round((x+w)*S)-a),Math.max(1,Math.round((y+h)*S)-b))}
+function font(size,f){ctx.font=Math.max(7,Math.round(size*S))+'px '+(f||FD)}
+function T(s,x,y,size,c,al,f){font(size,f);ctx.fillStyle=c;ctx.textAlign=al||'center';ctx.textBaseline='middle';ctx.fillText(s,x*S,y*S)}
+function TS(s,x,y,size,c,al,f){T(s,x+1,y+1,size,'#0b0d1a',al,f);T(s,x,y,size,c,al,f)}
+function TW(s,size,f){font(size,f);return ctx.measureText(s).width/S}
+function C(cx,cy,r,c,sx){sx=sx||1;for(let dy=-r;dy<r;dy++){const yy=dy+.5,dx=Math.sqrt(r*r-yy*yy)*sx;R(cx-dx,cy+dy,dx*2,1,c)}}
+function Ln(x0,y0,x1,y1,c,w){w=w||1;const n=Math.max(1,Math.ceil(Math.max(Math.abs(x1-x0),Math.abs(y1-y0))*1.3));for(let i=0;i<=n;i++){const u=i/n;R(x0+(x1-x0)*u-w/2,y0+(y1-y0)*u-w/2,w,w,c)}}
+function Bx(x,y,w,h,c){R(x,y,w,1,c);R(x,y+h-1,w,1,c);R(x,y,1,h,c);R(x+w-1,y,1,h,c)}
+function Ar(x,y,len,c){R(x,y,len,1,c);R(x+len-2,y-1,1,3,c);R(x+len-3,y-2,1,5,c)}
+function F(n,d,x,y,size,c){n=String(n);d=String(d);T(n,x,y-size*.5,size,c);T(d,x,y+size*.55,size,c);const w=Math.max(TW(n,size),TW(d,size))+2;R(x-w/2,y-.5,w,1,c)}
+function Rad(x,y,w,h,c){Ln(x,y+1,x+h*.12,y+h*.45,c);Ln(x+h*.12,y+h*.45,x+h*.32,y-h*.6,c);R(x+h*.32,y-h*.6-.5,w+3,1,c)}
+function Rt(str,x,y,size,c){const w=TW(str,size);Rad(x-w/2-size*.42,y,w,size,c);T(str,x,y,size,c)}
+function spr(map,pal,x,y,s){for(let r=0;r<map.length;r++){const row=map[r];let c=0;while(c<row.length){const ch=row[c];if(ch==='.'){c++;continue}let e=c+1;while(e<row.length&&row[e]===ch)e++;R(x+c*s,y+r*s,(e-c)*s,s,pal[ch]);c=e}}}
+
+/* ================= sprites ================= */
+const EIN=[
+"...hh.hhhh.hh...",
+".hhhhhhhhhhhhhh.",
+"hhhhhhhhhhhhhhhh",
+"hhhhssssssssHhhh",
+"hhHssssssssssHhh",
+"hhHsHHssssHHsHhh",
+"hhHswesssswesHhh",
+"hhHsssssSssssHh.",
+".hHssssSSSsssH..",
+"...smmmmmmmms...",
+"...ssmmMMmmss...",
+"....ssssssss....",
+"....jwwsswwj....",
+"..jjjjwttwjjjj..",
+".jjjjjjwttwjjjj.",
+".jjjjjjJwwJjjjj.",
+".jjJjjjjJjjjJjj.",
+".jjJjjjjojjjJjj.",
+".jjJjjjjJjjjJjj.",
+".jjJjjjjojjjJjj.",
+".ssJjjjjJjjjJss.",
+".ss.jjjjjjjj.ss.",
+"....pppppppp....",
+"....pppppppp....",
+"....ppp..ppp....",
+"....ppp..ppp....",
+"....ppp..ppp....",
+"....ppp..ppp....",
+"...bbbb..bbbb..."];
+const PE={h:'#f4f1ea',H:'#c4c2d0',s:'#f2bf96',S:'#d99d78',e:'#2a2333',w:'#ffffff',m:'#dcd9e4',M:'#8a6a66',j:'#7a5540',J:'#5b3d2e',t:'#b23a3a',p:'#3b3a52',b:'#1e1c2a',o:'#f5bd41'};
+const STAR=["....y....","....y....","...yyy...","yyyyyyyyy",".yyyyyyy.","..yyyyy..","..yyyyy..",".yyy.yyy.",".y.....y."];
+function einstein(x,y,s,talk,t){spr(EIN,PE,x,y,s);
+  if(talk&&Math.floor(t*9)%2===0)R(x+6*s,y+10*s,4*s,1.5*s,'#3a2228');
+  if(t%3.7<.13){R(x+4*s,y+6*s,2*s,s,PE.s);R(x+10*s,y+6*s,2*s,s,PE.s)}}
+
+/* ================= particles ================= */
+const parts=[],FW=['#f5bd41','#e2483f','#43c5ae','#7fd4ff','#ff8fa3','#f3ead2'];
+function burst(x,y,n,sp){if(RM)n=Math.ceil(n/3);for(let i=0;i<n;i++){const a=Math.random()*TAU,v=(sp||40)*(.35+Math.random()*.65);parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,l:1,c:FW[i%FW.length]})}}
+function drawParts(dt){for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=40*dt;p.l-=dt*.9;if(p.l<=0){parts.splice(i,1);continue}const z=p.l>.5?2:1;R(p.x,p.y,z,z,p.c)}}
+
+/* ================= scenes ================= */
+function sky(cols,y0,y1){const h=(y1-y0)/cols.length;cols.forEach((c,i)=>R(0,y0+i*h,W,h+1,c))}
+function stars(t,n,ymax,drift){for(let i=0;i<n;i++){let x=rnd(i)*W;if(drift)x=((x-t*(1+i%3)*drift)%W+W)%W;if(Math.sin(t*2+i*1.7)>-.7)R(x,rnd(i+50)*ymax,1,1,i%5===0?'#ffe9a8':i%7===0?'#9fd0ff':'#e8ecff')}}
+function hills(base,amp,seed,c,snow){for(let x=0;x<W;x+=2){const h=Math.max(4,amp*(.55+.45*Math.sin(x*.06+seed)+.3*Math.sin(x*.17+seed*2.3)+.15*Math.sin(x*.41+seed*5)));R(x,base-h,2,h,c);if(snow&&h>amp*.8)R(x,base-h,2,Math.min(5,h-amp*.8+1),snow)}}
+function peak(cx,base,h,c,c2,snow){for(let dy=0;dy<h;dy++){const half=dy*.72;R(cx-half,base-h+dy,half*2,1,c);R(cx+half*.25,base-h+dy,half*.75,1,c2);if(dy<h*.3){const j=dy%4<2?1:0;R(cx-half+j,base-h+dy,Math.max(1,half*2-j*2),1,snow)}}}
+function house(x,y,w,h,c,n,i){R(x,y,w,h,c);R(x,y,1,h,'rgba(0,0,0,.18)');
+  R(x-1,y-7,w+2,7,n?'#5a2f3a':'#9a4b36');R(x+1,y-9,w-2,2,n?'#4a2630':'#8a3f2d');R(x+Math.floor(w/2)-2,y-13,4,5,n?'#3a2030':'#7a3a2a');
+  const step=(w-6)/3;
+  for(let r=0;r<2;r++)for(let k=0;k<3;k++){const wx=x+3+k*step+1,wy=y+5+r*12,lit=n&&rnd(i*7+r*3+k)>.35;
+    R(wx,wy,4,6,n?(lit?'#ffd97a':'#23264a'):'#3d5078');if(!n)R(wx,wy,4,1,'#f3ead2');
+    if(r===0){R(wx-1,wy+6,6,1,'#3f8a4a');R(wx,wy+6,1,1,'#e2483f');R(wx+3,wy+6,1,1,'#e2483f')}}
+  R(x+3,y+h-9,w-6,9,n?'#1a1830':'#3b2f3a');R(x+3,y+h-9,1,1,c);R(x+w-4,y+h-9,1,1,c)}
+function tower(x,t,n){const st=n?'#62607f':'#cfc7a6',rf=n?'#4a2630':'#7b3b2e';
+  R(x,30,24,62,st);R(x,30,2,62,'rgba(0,0,0,.18)');
+  R(x-2,26,28,4,rf);R(x,20,24,6,rf);R(x+3,14,18,6,rf);R(x+6,8,12,6,rf);R(x+9,3,6,5,rf);R(x+11,-2,2,6,'#3f7a64');R(x+10,0,4,2,'#f5bd41');
+  C(x+12,47,10,'#f5bd41');C(x+12,47,9,'#2a2440');
+  for(let k=0;k<12;k++){const a=k/12*TAU;R(x+12+Math.sin(a)*7-.5,47-Math.cos(a)*7-.5,1,1,'#f5bd41')}
+  const a=t*.9,b=t*.075;Ln(x+12,47,x+12+Math.sin(a)*6,47-Math.cos(a)*6,'#f5bd41');Ln(x+12,47,x+12+Math.sin(b)*4,47-Math.cos(b)*4,'#f3ead2');
+  C(x+12,66,4,'#3a6ea8');R(x+11,65,2,2,'#f5bd41');
+  R(x+7,76,10,16,'#2b2230');R(x+7,76,1,1,st);R(x+16,76,1,1,st)}
+function tramCar(x,y,w,h){R(x,y,w,h,'#d4372f');R(x,y+h-6,w,2,'#f3e7c8');R(x+2,y-2,w-4,2,'#8f1f1c');
+  const n=Math.max(1,Math.round(w/11)),ww=(w-4)/n;for(let i=0;i<n;i++)R(x+3+i*ww,y+3,Math.max(1,ww-2),h*.38,'#bfe6f5');
+  R(x+w*.5-.5,y-7,1,5,'#3a3a4a');R(x+w*.5-4,y-8,8,1,'#3a3a4a');
+  C(x+w*.2,y+h,2.5,'#22202c',w<40?w/40:1);C(x+w*.8,y+h,2.5,'#22202c',w<40?w/40:1)}
+function swissFlag(x,y){R(x,y,1,14,'#5a5560');R(x+1,y,9,9,'#e2483f');R(x+4.5,y+1.5,2,6,'#fff');R(x+2.5,y+3.5,6,2,'#fff')}
+function bern(t,o){o=o||{};const n=o.night;
+  sky(n?['#141a3c','#1c2452','#2a2f66','#453a78','#6b4a80']:['#6fb7e6','#8cc8ec','#aad8f0','#cbe7f2','#f3e7c8'],0,72);
+  if(n)stars(t,40,48);
+  hills(72,30,1.3,n?'#39407a':'#b9cde6',n?'#8d93c9':'#ffffff');
+  const cols=n?['#5a5878','#666486','#504e6e']:['#d8d0ac','#c9c39f','#e2dab8'];
+  let x=-6;for(let i=0;i<8;i++){const w=24+Math.floor(rnd(i+3)*8),h=34+Math.floor(rnd(i+11)*14);house(x,92-h,w,h,cols[i%3],n,i);x+=w}
+  swissFlag(64,34);tower(112,t,n);
+  R(0,92,W,36,n?'#3b3a52':'#8f897a');for(let i=0;i<70;i++)R(rnd(i+200)*W,94+rnd(i+300)*32,3,1,n?'#33324a':'#7d776a');
+  R(0,104,W,1,'#5a5560');R(0,111,W,1,'#5a5560');
+  if(o.tram){const tx=((t*34)%(W+100))-80;tramCar(tx,87,58,19)}}
+function office(t,o){o=o||{};const room=o.room;
+  R(0,0,W,H,room?'#8a6a5a':'#5c5078');for(let x=0;x<W;x+=12)R(x,0,2,100,room?'#7f6052':'#554a70');
+  R(0,96,W,4,'#3a2a22');R(0,100,W,28,'#7a5236');for(let i=0;i<4;i++)R(0,106+i*7,W,1,'#6a452c');
+  const wx=124,wy=12;R(wx-2,wy-2,48,44,'#3a2a22');R(wx,wy,44,40,'#8cc8ec');R(wx,wy+24,44,4,'#9a4b36');R(wx,wy+28,44,12,'#d8d0ac');
+  R(wx+28,wy+8,8,20,'#cfc7a6');R(wx+27,wy+4,10,4,'#7b3b2e');R(wx+31,wy,2,4,'#7b3b2e');R(wx+30,wy+12,4,4,'#2a2440');
+  R(wx+21,wy,2,40,'#3a2a22');R(wx,wy+19,44,2,'#3a2a22');R(wx-4,wy+40,52,3,'#4a342a');
+  const cx=74;R(cx-6,8,12,30,'#4a2f20');C(cx,16,4,'#f3ead2');Ln(cx,16,cx+Math.sin(t)*3,16-Math.cos(t)*3,'#2a2333');
+  const pa=Math.sin(t*3)*3;Ln(cx,22,cx+pa,32,'#f5bd41');R(cx+pa-1.5,31,3,3,'#f5bd41');
+  if(room){ /* violin on the wall */
+    R(96,22,3,22,'#3a2418');C(97.5,50,6,'#b4632c');C(97.5,58,7,'#b4632c');R(97,22,1,40,'#f3ead2');R(94,20,7,3,'#3a2418')}
+  else{R(88,40,30,22,'#6b4526');R(90,42,26,18,'#1d3a35');T('E=mc²',103,51,8,'#f4f1e4')}
+  R(64,84,116,5,'#a06a3c');R(68,89,112,39,'#7a4a28');R(74,96,30,12,'#6a3e20');R(112,96,30,12,'#6a3e20');R(87,101,4,2,'#f5bd41');R(125,101,4,2,'#f5bd41');
+  if(room){ /* cheese and chocolate */
+    R(82,76,22,8,'#f7cc4a');R(82,76,22,2,'#fbe08a');R(87,79,2,2,'#d9961a');R(96,80,3,3,'#d9961a');R(100,77,2,2,'#d9961a');
+    R(116,79,20,5,'#5a2f18');for(let i=0;i<4;i++)R(117+i*5,80,4,3,'#7a4526');R(142,74,10,10,'#e8e4f0');R(144,72,6,2,'#e8e4f0')}
+  else{for(let i=0;i<5;i++)R(80-i%2,82-i*2,18,2,i%2?'#f3ead2':'#dcd4bc');for(let i=0;i<3;i++)R(104,82-i*2,16,2,i%2?'#dcd4bc':'#f3ead2');
+    R(128,78,6,6,'#22202c');Ln(131,78,138,66,'#f3ead2');R(152,64,2,20,'#3a3a4a');R(145,60,16,5,'#3f8a4a');R(147,65,12,2,'#fff3b0')}}
+function alps(t,o){o=o||{};const n=o.night;
+  sky(n?['#0e1230','#141a40','#1c2452','#2a2f66','#3a3a78']:['#5fb0e8','#7cc0ee','#9bd0f2','#bfe2f5','#e4f1f3'],0,82);
+  if(n){stars(t,60,58);C(152,18,7,'#f6f1d0');R(148,15,3,3,'#dcd6b0')}else C(152,18,8,'#fff3b0');
+  peak(34,80,44,n?'#3a4078':'#8fa3c9',n?'#2f3468':'#7d91b8',n?'#aab0e0':'#fff');
+  peak(88,80,58,n?'#434986':'#9db0d4',n?'#363b72':'#8499c0',n?'#b8bdea':'#fff');
+  peak(140,80,48,n?'#3a4078':'#8fa3c9',n?'#2f3468':'#7d91b8',n?'#aab0e0':'#fff');
+  for(let x=0;x<W;x+=2)R(x,74+3*Math.sin(x*.05)+2*Math.sin(x*.13),2,30,n?'#1f3a3a':'#5fae5a');
+  for(let i=0;i<5;i++){const hx=18+i*36+rnd(i)*10;R(hx,72,7,5,n?'#5a5878':'#e2dab8');R(hx-1,69,9,3,n?'#5a2f3a':'#9a4b36');if(n)R(hx+2,73,2,2,'#ffd97a')}
+  R(0,96,W,32,n?'#1e4a6a':'#3fb7b0');for(let i=0;i<14;i++)R((rnd(i)*W+t*6)%W,99+rnd(i+9)*26,5,1,n?'#2f6a8a':'#8fe0d6');
+  const st=n?'#6a6888':'#b9b39a';R(0,84,W,4,st);R(0,88,W,12,n?'#5a5878':'#a8a28a');
+  [22,67,112,157].forEach(cx=>{for(let dy=0;dy<11;dy++){const dx=Math.sqrt(144-(11-dy)*(11-dy));R(cx-dx,90+dy,dx*2,1,n?'#1e4a6a':'#3fb7b0')}});
+  if(o.bank!==false){R(0,116,74,12,n?'#24463c':'#4f9a4c');R(0,116,74,2,n?'#2f5a4a':'#6fc068')}}
+function space(t,o){o=o||{};R(0,0,W,H,'#0b0d24');stars(t,70,H,o.still?0:1.2);
+  if(!o.plain){C(150,24,9,'#c96f4a');R(137,23,26,1,'#f3d9a8');R(143,20,4,2,'#e08a5a')}
+  if(o.ground){for(let x=0;x<70;x+=2)R(x,120+3*Math.cos(x*.05),2,12,'#5a5078');R(10,122,5,2,'#494066');R(40,124,6,2,'#494066')}}
+function starBridge(lit,t){C(124,86,9,'#4a4468');C(176,86,9,'#4a4468');R(121,82,4,2,'#3a3558');
+  R(124,72,52,4,lit>0?'#f3ead2':'#3d3a5c');[128,148,168].forEach(x=>R(x,76,3,9,lit>0?'#cfc7a6':'#33304e'));
+  for(let i=0;i<5;i++){const x=130+i*10,on=lit>i/5;R(x,66,1,6,'#6a6888');R(x-1,63,3,3,on?FW[i]:'#2a2845');if(on&&Math.floor(t*6+i)%3)R(x-2,62,5,5,'rgba(255,255,255,.25)')}
+  if(lit>=1)tramCar(126+((t*9)%36),65,10,6)}
+function cannon(){C(8,76,14,'#5a5078');R(2,70,5,2,'#494066');R(8,54,18,8,'#8f9bb5');R(8,54,18,2,'#b9c3d9');R(4,56,8,12,'#6f7f8f');C(10,68,4,'#3a3a4a');C(10,68,2,'#8f9bb5')}
+function rocket(x,y,w,h,t,fl){
+  if(fl){const len=w*.14*(1+.4*Math.sin(t*30));R(x+w*.08-len,y+h*.25,len,h*.5,'#f5bd41');R(x+w*.08-len*.55,y+h*.38,len*.55,h*.24,'#fff')}
+  R(x+w*.03,y-h*.28,w*.16,h*.36,'#e2483f');R(x+w*.03,y+h*.92,w*.16,h*.36,'#e2483f');
+  R(x+w*.08,y+h*.12,w*.08,h*.76,'#6f7f8f');
+  R(x+w*.15,y,w*.6,h,'#dfe6ef');R(x+w*.15,y+h*.72,w*.6,h*.28,'#aeb9c9');
+  R(x+w*.75,y+h*.08,w*.1,h*.84,'#e2483f');R(x+w*.85,y+h*.24,w*.08,h*.52,'#e2483f');R(x+w*.93,y+h*.4,w*.07,h*.2,'#e2483f');
+  R(x+w*.5,y+h*.22,w*.13,h*.36,'#2a2440');R(x+w*.52,y+h*.27,w*.09,h*.26,'#43c5ae')}
+function train(x,y,w,h){const n=4,cw=w/n;for(let i=0;i<n;i++){const cx=x+i*cw;
+  if(i===n-1){R(cx,y+h*.2,cw*.94,h*.8,'#2f7f6a');R(cx+cw*.55,y-h*.15,cw*.2,h*.4,'#22202c');R(cx+cw*.1,y+h*.3,cw*.3,h*.3,'#bfe6f5')}
+  else{R(cx,y,cw*.9,h,i%2?'#3a6ea8':'#d4372f');R(cx+cw*.12,y+h*.2,cw*.26,h*.3,'#bfe6f5');R(cx+cw*.52,y+h*.2,cw*.26,h*.3,'#bfe6f5')}
+  C(cx+cw*.25,y+h,2,'#22202c',cw/22);C(cx+cw*.7,y+h,2,'#22202c',cw/22)}}
+function mjLie(x,y,len,t,sleep){const sk='#8d5a3b',sk2='#74472c',red='#d4262c',bk='#16161d',wh='#f4f4f4';
+  const g=(a,b,yy,hh,c)=>R(x+len*a,y+yy,Math.max(1,len*(b-a)),hh,c);
+  g(.6,.9,2,5,sk);g(.6,.9,9,5,sk);g(.6,.9,6,1,sk2);g(.6,.9,14,1,sk2);
+  g(.87,.93,2,5,wh);g(.87,.93,9,5,wh);g(.92,1,0,7,wh);g(.92,1,9,7,wh);g(.96,1,0,3,red);g(.96,1,9,3,red);g(.92,1,6,1,bk);g(.92,1,15,1,bk);
+  g(.47,.63,1,14,red);g(.47,.63,1,1,bk);g(.47,.63,14,1,bk);g(.61,.63,1,14,bk);
+  g(.16,.48,0,16,red);g(.16,.48,0,1,bk);g(.16,.48,15,1,bk);
+  g(.17,.23,9,6,sk);g(.2,.44,11,4,sk);g(.42,.47,11,4,sk2);
+  if(len>60)T('23',x+len*.33,y+6,8,'#fff');
+  g(.12,.17,5,7,sk);g(0,.12,2,12,sk);g(.01,.11,1,1,sk);g(.01,.11,14,1,sk);g(0,.02,4,8,sk2);g(.07,.1,0,2,sk);
+  g(.055,.085,6,1,'#2a1a12');g(.04,.06,9,3,sk2);
+  if(sleep)for(let i=0;i<3;i++){const p=(t*.5+i/3)%1;T('z',x+len*.05+p*10,y-4-p*12,5+p*4,'rgba(255,255,255,'+(1-p).toFixed(2)+')')}}
+function ball(cx,cy,r,sx){C(cx,cy,r,'#e8872e',sx);R(cx-r*sx,cy-.5,r*2*sx,1,'#7a3a12');R(cx-.5*sx,cy-r,Math.max(1,sx),r*2,'#7a3a12')}
+function meadow(t){sky(['#5fb0e8','#7cc0ee','#9bd0f2','#bfe2f5'],0,60);hills(60,24,2.1,'#b9cde6','#fff');R(0,58,W,70,'#5fae5a');R(0,58,W,2,'#7cc474');
+  for(let i=0;i<40;i++)R(rnd(i+70)*W,62+rnd(i+170)*64,1,2,'#4f9a4c')}
+
+const SC={
+  bern:(t,o)=>bern(t,o),
+  tram:(t,o)=>bern(t,{tram:1}),
+  fest:(t,o)=>{bern(t,{night:1});if(Math.random()<(RM?.01:.035))burst(60+Math.random()*110,10+Math.random()*40,18,34)},
+  office:(t,o)=>office(t,{}),
+  room:(t,o)=>office(t,{room:1}),
+  alps:(t,o)=>alps(t,{}),
+  night:(t,o)=>alps(t,{night:1}),
+  bridge:(t,o)=>{space(t,{ground:1,still:1});starBridge(0,t)},
+  nap:(t,o)=>{meadow(t);mjLie(72,98,88,t,true);ball(169,108,6,1)}
+};
+function cine(scene){return(t,st)=>{SC[scene](t);einstein(8,41,3,talking(),t)}}
+
+/* ================= blackboard visuals ================= */
+const CH={w:'#f4f1e4',y:'#ffd75e',p:'#ff8fa3',b:'#7fd4ff',g:'#9be58a',d:'#6f8f86'};
+function board(){R(0,0,W,H,'#6b4526');R(2,2,W-4,H-4,'#8a5a30');R(5,5,W-10,H-10,'#1d3a35');
+  for(let i=0;i<50;i++)R(8+rnd(i)*(W-18),8+rnd(i+99)*(H-22),1,1,'#25463f');
+  R(5,H-9,W-10,4,'#6b4526');R(22,H-10,8,2,'#f4f1e4');R(36,H-10,5,2,'#ffd75e');R(150,H-10,10,2,'#c9c6d4')}
+function choc(x,y,s){R(x,y,s,s,'#5a2f18');R(x+1,y+1,s-2,s-2,'#7a4526');R(x+1,y+1,s-3,1,'#9a5f38');R(x+1,y+1,1,s-3,'#9a5f38')}
+function tile(x,y,s,i){R(x,y,s,s,i%2?'#e7a85a':'#d9924a');R(x,y,s,1,'#f6c888');R(x,y+s-1,s,1,'#b0703a')}
+function bubble(x,y,w,h,c){R(x+2,y,w-4,1,c);R(x+2,y+h-1,w-4,1,c);R(x,y+2,1,h-4,c);R(x+w-1,y+2,1,h-4,c);R(x+1,y+1,1,1,c);R(x+w-2,y+1,1,1,c);R(x+1,y+h-2,1,1,c);R(x+w-2,y+h-2,1,1,c)}
+
+function vGrid(r,c,o){o=o||{};return(t,st)=>{board();
+  const cs=Math.min(15,Math.floor(96/c),Math.floor(74/r)),gw=c*cs,gh=r*cs,x0=Math.round(90-gw/2)+(o.sq?0:6),y0=Math.round(58-gh/2)+4,go=Math.max(st.th,st.ts);
+  for(let i=0;i<r;i++)for(let j=0;j<c;j++){const x=x0+j*cs,y=y0+i*cs;o.sq?tile(x,y,cs-1,i+j):choc(x,y,cs-1);
+    if(st.solved&&Math.floor(st.ts*7+i*3+j*5)%9===0)R(x+1,y+1,2,2,'#fff')}
+  if(o.sq){T(String(c),x0+gw/2,y0-6,9,CH.b);T(String(r),x0-7,y0+gh/2,9,CH.p)}
+  else{T(c+' in each row',x0+gw/2,y0-6,7.5,CH.b,0,FB);T(r+' rows',x0-4,y0+gh/2,7.5,CH.p,'right',FB)}
+  if(go>=0)for(let i=0;i<r;i++)if(go>i*.4)T(String((i+1)*c),x0+gw+4,y0+i*cs+cs/2,cs<9?6:9,CH.y,'left');
+  if(st.solved)T(o.sq?c+'² = '+r*c:r+' × '+c+' = '+r*c,90,111,10,CH.g)}}
+function vSqGrow(){return(t,st)=>{board();const k=1+Math.floor(t/1.4)%5,cs=13,x0=56,y1=96;
+  for(let i=0;i<k;i++)for(let j=0;j<k;j++)tile(x0+j*cs,y1-(i+1)*cs,cs-1,i+j);
+  T(k+' × '+k+' = '+k*k,90,20,12,CH.y);T(String(k),x0+k*cs/2,102,8,CH.b);T(String(k),x0-6,y1-k*cs/2,8,CH.p)}}
+function vShare(n,k){const per=n/k;const f=(t,st)=>{board();const go=Math.max(st.th,st.ts),pw=Math.min(28,Math.floor(150/k)-4),cols=Math.min(n,10);
+  T(n+' chocolates, '+k+' plates',90,12,7.5,CH.w,0,FB);
+  for(let p=0;p<k;p++){const px=90+(p-(k-1)/2)*(pw+4);R(px-pw/2,100,pw,3,'#e8e4f0');R(px-pw/2+3,103,pw-6,2,'#b9b4c9')}
+  for(let i=0;i<n;i++){const sx=90+((i%cols)-(cols-1)/2)*8-3,sy=20+Math.floor(i/cols)*8,p=i%k,q=Math.floor(i/k),tx=90+(p-(k-1)/2)*(pw+4)-3,ty=93-q*7;
+    const u=go<0?0:clamp((go-i*.12)/.35,0,1),e=ease(u);choc(sx+(tx-sx)*e,sy+(ty-sy)*e-Math.sin(e*Math.PI)*8,6)}
+  if(st.solved&&st.ts>n*.12+.4)for(let p=0;p<k;p++)T(String(per),90+(p-(k-1)/2)*(pw+4),111,8,CH.y)};
+  f.hold=n*.12+2;return f}
+function vParen(tokens,ans){return(t,st)=>{board();const open=st.hint||st.solved;let size=20,parts,tot;
+  for(;;){parts=tokens.map(k=>typeof k==='string'?{txt:k}:{txt:open?String(k.v):'('+k.s+')',g:1});tot=5*(parts.length-1);parts.forEach(p=>{p.w=TW(p.txt,size)+(p.g?8:0);tot+=p.w});if(tot<=160||size<=10)break;size-=2}
+  let x=90-tot/2;const y=54;
+  parts.forEach(p=>{if(p.g){const pu=open?0:Math.round(Math.sin(t*5));bubble(x-pu,y-size*.75-pu,p.w+2*pu,size*1.5+2*pu,open?CH.g:CH.y);if(!open)T('first!',x+p.w/2,y-size*.75-6,7.5,CH.y,0,FB)}
+    T(p.txt,x+p.w/2,y,size,p.g?(open?CH.g:CH.y):CH.w);x+=p.w+5});
+  if(st.solved)T('= '+ans,90,92,18,CH.g)}}
+function vRoot(N){const n=Math.round(Math.sqrt(N));const f=(t,st)=>{board();
+  const cs=Math.min(12,Math.floor(72/n)),gw=n*cs,x0=96-gw/2,y0=64-gw/2,go=Math.max(st.th,st.ts);
+  for(let i=0;i<N;i++){const r=Math.floor(i/n),c=i%n,tx=x0+c*cs,ty=y0+r*cs,sx=10+rnd(i*7+N)*152,sy=24+rnd(i*13+N)*82;
+    const u=go<0?0:clamp((go-i*(1.1/N))/.5,0,1),e=ease(u);tile(sx+(tx-sx)*e,sy+(ty-sy)*e,cs-1,r+c)}
+  R(62,7,56,11,'#1d3a35');T(N+(N===1?' tile':' tiles'),90,13,7,CH.w,0,FB);
+  if(go>1.8){R(x0-4,y0,1,gw-1,CH.y);R(x0-5,y0,3,1,CH.y);R(x0-5,y0+gw-2,3,1,CH.y);T(st.solved?String(n):'?',x0-11,y0+gw/2,11,CH.y)}
+  if(st.solved&&st.ts>.3){R(58,104,64,12,'#1d3a35');const rw=TW(String(N),10);Rt(String(N),80,110,10,CH.g);T('= '+n,80+rw/2+6,110,10,CH.g,'left')}};
+  f.hold=3;return f}
+function vPie(d,k,count){return(t,st)=>{board();const cx=count?76:70,cy=60,r=36,go=Math.max(st.th,st.ts);
+  for(let y=-r;y<r;y++)for(let x=-r;x<r;x++){const X=x+.5,Y=y+.5,rr=X*X+Y*Y;if(rr>r*r)continue;let a=Math.atan2(X,-Y);if(a<0)a+=TAU;
+    const fr=a/TAU*d,idx=Math.floor(fr),edge=Math.min(fr-idx,1-(fr-idx))*(TAU/d)*Math.sqrt(rr),on=idx<k;
+    R(cx+x,cy+y,1,1,edge<.8?'#1d3a35':rr>(r-3)*(r-3)?(on?'#d9961a':'#4f6a5f'):(on?'#f7cc4a':'#35554c'))}
+  [[-13,-15,4],[11,7,5],[-9,15,3],[17,-17,3],[-22,3,2],[6,-22,2],[20,18,2]].forEach(h=>{let a=Math.atan2(h[0],-h[1]);if(a<0)a+=TAU;if(Math.floor(a/TAU*d)<k)C(cx+h[0],cy+h[1],h[2],'#d9a520')});
+  if(count){for(let i=0;i<d;i++)if(go>=0&&go>i*.45){const a=(i+.5)/d*TAU;const px=cx+Math.sin(a)*20,py=cy-Math.cos(a)*20;C(px,py,6,'#1d3a35');T(String(i+1),px,py,9,CH.w)}
+    T('one piece',146,34,7.5,CH.w,0,FB);F(1,d,146,54,12,CH.y);if(st.solved)T(d+' pieces',146,84,8,CH.g)}
+  else{T('yellow',146,36,7.5,CH.w,0,FB);F(k,d,146,58,13,CH.y);T(k+' of '+d+' pieces',146,84,7.5,CH.w,0,FB)}}}
+function groupBar(total,sd,sn,y,go){const per=total/sd,cw=Math.min(12,Math.floor(132/total)),bw=total*cw+(sd-1)*2,x0=90-bw/2;
+  for(let i=0;i<total;i++){const g=Math.floor(i/per);R(x0+i*cw+g*2,y,cw-1,7,g<sn?'#f5bd41':'#3d4470')}
+  for(let g=0;g<sd;g++)if(go>g*.25)T(String(per),x0+(g+.5)*per*cw+g*2-.5,y+12,7.5,g<sn?'#f5bd41':'#8a8fb8')}
+function vFracOf(num,den,total){const per=total/den;return(t,st)=>{board();const go=Math.max(st.th,st.ts),cs=per<=2?10:per<=4?9:8,bw=cs+8,bh=per*(cs+2)+6,gap=5,tw_=den*bw+(den-1)*gap,x0=90-tw_/2,y0=62-bh/2;
+  T(total+' in '+den+' equal groups. Take '+num+'.',90,14,7.5,CH.w,0,FB);
+  for(let g=0;g<den;g++){const x=x0+g*(bw+gap),lit=g<num;if(lit)R(x+1,y0+1,bw-2,bh-2,'#33524a');Bx(x,y0,bw,bh,lit?CH.y:CH.d);
+    ctx.globalAlpha=lit?1:.4;for(let i=0;i<per;i++)choc(x+4,y0+4+i*(cs+2),cs);ctx.globalAlpha=1;
+    if(go>=0&&go>g*.3)T(String(per),x+bw/2,y0+bh+7,8,lit?CH.y:CH.d)}
+  if(st.solved)T(num+' × '+per+' = '+num*per,90,111,9,CH.g)}}
+function vZeros(){return(t,st)=>{board();const s='300,000,000',size=22,go=Math.max(st.th,st.ts);let tot=0;const ws=[];for(const ch of s){const w=TW(ch,size)+1;ws.push(w);tot+=w}
+  let x=90-tot/2,z=0;for(let i=0;i<s.length;i++){const ch=s[i],cx=x+ws[i]/2;T(ch,cx,54,size,ch==='0'?CH.y:CH.w);if(ch==='0'){if(go>=0&&go>z*.3)T(String(z+1),cx,34,8,CH.b);z++}x+=ws[i]}
+  T('meters every second',90,78,7,CH.w,0,FB);T('the speed of light',90,18,7,CH.d,0,FB);if(st.solved)T('a 3 and 8 zeros!',90,102,10,CH.g)}}
+function vEarthLight(){return(t,st)=>{space(t,{plain:1});const cx=90,cy=64;C(cx,cy,24,'#2f7fd0');C(cx-9,cy-7,8,'#4fae5a');C(cx+10,cy+8,7,'#4fae5a');C(cx+6,cy-15,4,'#4fae5a');R(cx-16,cy+12,8,3,'#4fae5a');R(cx-6,cy-23,12,2,'#f4f8ff');
+  const T7=4.2,tt=t%(T7+1.8),laps=Math.min(7,tt/T7*7),a=laps*TAU;
+  if(tt<T7)for(let k=14;k>=0;k--){const aa=a-k*.1;if(aa<0)continue;R(cx+Math.sin(aa)*34-1,cy-Math.cos(aa)*34-1,k?2:3,k?2:3,k?'rgba(245,189,65,'+(1-k/15).toFixed(2)+')':'#fff')}
+  TS('laps: '+Math.floor(laps+1e-6),90,13,10,'#f5bd41');if(tt>=T7)TS('...all in 1 second!',90,116,9,'#f3ead2')}}
+function vRace(num,den,secs){const both=num!==den;const f=(t,st)=>{space(t,{plain:1,still:1});const x0=18,x1=164,u=(x1-x0)/secs,go=Math.max(st.th,st.ts),p=st.solved?clamp(st.ts/2.6,0,1):0;
+  R(x0,60,x1-x0+1,1,'#8fa3d9');for(let i=0;i<=secs;i++){R(x0+i*u,57,1,7,'#8fa3d9');if(secs<=5||i%5===0)T(String(i),x0+i*u,70,7,'#8fa3d9')}
+  T('light-seconds',x1,79,6,'#8fa3d9','right',FB);
+  if(both&&go>=0){const per=secs/den;for(let g=0;g<den;g++){const a=x0+g*per*u+1,b=x0+(g+1)*per*u-1,c=g<num?'#f5bd41':'#4a5190';R(a,52,b-a,2,c)}}
+  const lx=x0+p*secs*u;for(let k=0;k<10;k++)R(lx-k*3-2,38+Math.round(Math.sin(t*14+k)),2,2,k?'rgba(255,215,94,'+(1-k/10).toFixed(2)+')':'#fff');
+  T('light',x0,26,7,'#ffd75e','left',FB);if(st.solved&&p>=1)T(String(secs),lx,28,9,'#ffd75e');
+  if(both){const rx=x0+p*secs*num/den*u;rocket(rx-18,90,20,8,t,st.solved&&p<1);T('rocket speed',x0,110,7,'#f3ead2','left',FB);F(num,den,x0+TW('rocket speed',7,FB)+8,110,7,'#f3ead2');
+    if(st.solved&&p>=1){R(rx,64,1,24,'#43c5ae');T(String(secs*num/den),rx+6,82,10,'#43c5ae')}}};
+  f.hold=3.6;return f}
+function vArea(d,K,mode){const m=Math.round(Math.sqrt(K));return(t,st)=>{board();const go=Math.max(st.th,st.ts),cs=Math.floor(70/d),x0=20,y0=24,g=d*cs,rx=136;let cnt=0;
+  for(let r=0;r<d;r++)for(let c=0;c<d;c++){const x=x0+c*cs,y=y0+r*cs,k=m*m===K?(r>=d-m&&c<m):(r*d+c<K);
+    if(mode==='one'){if(k){R(x,y,cs-1,cs-1,'#2a4a43');Ln(x+3,y+3,x+cs-4,y+cs-4,CH.p);Ln(x+cs-4,y+3,x+3,y+cs-4,CH.p)}else{R(x,y,cs-1,cs-1,'#4aa3d9');cnt++;if(go>=0&&go>cnt*.1)T(String(cnt),x+cs/2-.5,y+cs/2,cs*.5,'#0b2030')}}
+    else{R(x,y,cs-1,cs-1,k?'#f0b93a':'#2a4a43');if(k){cnt++;if(mode==='sq'&&go>=0&&go>cnt*.1)T(String(cnt),x+cs/2-.5,y+cs/2,cs*.5,'#4a2a00')}}}
+  if(mode!=='one'&&m*m===K){R(x0,y0+g+2,m*cs-1,1,CH.y);T(m+' of '+d,x0+m*cs/2,y0+g+8,7.5,CH.y,0,FB)}
+  if(mode==='sq'){T('yellow squares',rx,34,7.5,CH.w,0,FB);T((st.solved?K:'?')+' of '+d*d,rx,56,12,st.solved?CH.g:CH.y);T(m+' rows of '+m,rx,76,7.5,CH.w,0,FB)}
+  else if(mode==='one'){T('whole: '+d*d,rx,30,7.5,CH.w,0,FB);T('take away '+K,rx,42,7.5,CH.p,0,FB);T((st.solved?d*d-K:'?')+' left',rx,62,12,st.solved?CH.g:CH.b)}
+  else{T('side of yellow',rx,34,7.5,CH.w,0,FB);T((st.solved?m:'?')+' of '+d,rx,56,12,st.solved?CH.g:CH.y);T(K+' of '+d*d+' squares',rx,76,7.5,CH.w,0,FB)}}}
+function vMachine(vals,stage,note,sol){return(t,st)=>{board();T("EINSTEIN'S SLOW-DOWN MACHINE",90,15,8,CH.y);
+  const bx=[40,90,140],vx=[15,65,115,165],cap=['square','1 minus','root'];R(8,60,164,3,'#6f7f8f');
+  for(let i=0;i<3;i++){const x=bx[i]-12,act=i===stage&&!st.solved,done=i<stage||st.solved;
+    R(x,42,24,38,'#3a2f55');R(x+1,43,22,36,act?(Math.floor(t*4)%2?'#8a6fd0':'#6f58b0'):'#57488a');R(x+1,43,22,2,'#8f80c0');
+    R(x+3,46,3,3,done?'#9be58a':act&&Math.floor(t*4)%2?'#f5bd41':'#2a2440');
+    const gx=x+18+(act?Math.floor(t*6)%2:0);R(gx,46,3,3,'#c9c6d4');
+    if(i===0){Bx(bx[i]-6,56,9,9,CH.w);T('2',bx[i]+7,55,8,CH.w)}
+    else if(i===1){T('1 −',bx[i]-4,61,10,CH.w);Bx(bx[i]+3,57,7,8,CH.w)}
+    else{Rad(bx[i]-8,62,8,11,CH.w);Bx(bx[i]-3,58,7,8,CH.w)}
+    T(cap[i],bx[i],87,7.5,CH.w,0,FB)}
+  for(let j=0;j<4;j++){let v=vals[j];if(!v)continue;if(st.solved&&sol&&(v==='?'||v[0]==='?'))v=sol;const hot=j===stage+1&&!st.solved;R(vx[j]-8,47,16,28,'#1d3a35');Bx(vx[j]-8,47,16,28,hot?CH.y:CH.d);
+    if(v==='?')T('?',vx[j],61,13,CH.y);else F(v[0],v[1],vx[j],61,9,v===sol||j===3?CH.g:CH.w)}
+  if(vals[0]){T('speed in',8,103,7.5,CH.b,'left',FB);R(15,77,1,20,CH.b)}
+  if(vals[3]){T('slow-down number',172,103,7.5,CH.g,'right',FB);R(165,77,1,20,CH.g)}
+  if(note)T(note,65,103,7.5,CH.p,0,FB)}}
+function vFormula(){return(t,st)=>{board();T('THE SLOW-DOWN NUMBER',90,15,8,CH.y);const y=40;
+  Rad(54,y,62,24,CH.w);T('1 −',80,y,16,CH.w);F('v²','c²',106,y,10,CH.w);
+  T('v = rocket speed    c = light speed',90,64,7.5,CH.b,0,FB);
+  [[3,5,4,5],[4,5,3,5],[0,0,1,4]].forEach((r,i)=>{const x=34+i*56;if(r[0])F(r[0],r[1],x-12,92,8,CH.w);else T('turbo',x-13,92,7,CH.w);Ar(x-3,92,9,CH.d);F(r[2],r[3],x+13,92,8,CH.g)});
+  T('speed            slow-down number',90,110,6,CH.d,0,FB)}}
+function clockFace(cx,cy,r,turn){C(cx,cy,r,'#2a2440');C(cx,cy,r-2,'#f3ead2');for(let k=0;k<12;k++){const a=k/12*TAU;R(cx+Math.sin(a)*(r-4)-.5,cy-Math.cos(a)*(r-4)-.5,1,1,'#2a2440')}
+  const a=turn*TAU;Ln(cx,cy,cx+Math.sin(a)*(r-6),cy-Math.cos(a)*(r-6),'#e2483f',1.5);R(cx-1,cy-1,2,2,'#2a2440')}
+function vClocks(sn,sd,total,unit,o){o=o||{};const res=total*sn/sd;const f=(t,st)=>{space(t,{plain:1});
+  for(let x=0;x<92;x+=2)R(x,H-10-8*Math.cos((x-44)*.035),2,22,'#2f7fd0');R(20,H-12,12,4,'#4fae5a');R(52,H-14,16,5,'#4fae5a');
+  const p=st.solved?clamp(st.ts/3,0,1):0,n1=st.solved?Math.floor(total*p+1e-6):total,n2=st.solved?Math.floor(res*p+1e-6):null;
+  clockFace(46,44,20,st.solved?p:0);
+  const cx=132,cy=44+Math.sin(t*3)*1.5,fl=7+3*Math.sin(t*30);
+  for(let i=0;i<5;i++)R(cx-40-((t*60+i*17)%34),cy-18+i*9,8,1,'#8fa3d9');
+  R(cx-22-fl,cy-4,fl,8,'#f5bd41');R(cx-22-fl*.5,cy-2,fl*.5,4,'#fff');
+  R(cx+16,cy-9,10,18,'#e2483f');R(cx+26,cy-5,5,10,'#e2483f');R(cx+31,cy-2,3,4,'#e2483f');R(cx-30,cy-16,12,9,'#e2483f');R(cx-30,cy+7,12,9,'#e2483f');
+  C(cx,cy,22,'#dfe6ef');clockFace(cx,cy,18,st.solved?p*sn/sd:0);
+  T('our clock',46,73,7.5,'#aeb1d0',0,FB);TS(n1+' '+unit,46,85,10,'#f3ead2');
+  T('rocket clock',132,73,7.5,'#aeb1d0',0,FB);TS((n2===null?'?':n2)+' '+unit,132,85,10,st.solved?'#43c5ae':'#f5bd41');
+  if(o.speed){T('speed',122,11,7,'#aeb1d0','right',FB);F(o.speed[0],o.speed[1],130,11,7,'#f3ead2')}else if(o.label)T(o.label,132,11,8,'#f5bd41');
+  if(st.hint||st.solved){R(14,96,152,26,'rgba(11,13,36,.88)');groupBar(total,sd,sn,100,Math.max(st.th,st.ts))}};f.hold=4;return f}
+function vLightClock(){return(t,st)=>{space(t,{plain:1,still:1});const yT=30,yB=86,h=yB-yT,rate=1.1,cyc=10.6/rate,tt=t%cyc;
+  R(88,8,1,100,'#3d4470');T('standing still',44,14,7.5,'#aeb1d0',0,FB);T('flying fast',134,14,7.5,'#aeb1d0',0,FB);
+  const ph=tt*rate,b=Math.floor(ph),fr=ph-b,y1=b%2?yB-h*fr:yT+h*fr;
+  R(32,yT-3,24,3,'#c9c6d4');R(32,yB+1,24,3,'#c9c6d4');R(31,yT-3,1,h+7,'#4a5190');R(56,yT-3,1,h+7,'#4a5190');
+  for(let k=6;k>=0;k--){const pp=ph-k*.05;if(pp<0)continue;const bb=Math.floor(pp),ff=pp-bb;R(43,(bb%2?yB-h*ff:yT+h*ff)-1,2,2,k?'rgba(255,215,94,'+(1-k/7).toFixed(2)+')':'#fff')}
+  const ph2=tt*rate*.8,b2=Math.floor(ph2),step=30,span=76,pos=s=>{const bb=Math.floor(s),ff=s-bb;return[(s*step)%span,bb%2?yB-h*ff:yT+h*ff]};
+  const xs=94+(ph2*step)%span;
+  for(let k=40;k>=1;k--){const s=ph2-k*.045;if(s<0)continue;const q=pos(s);if(q[0]>(ph2*step)%span)continue;R(100+q[0],q[1]-.5,1,1,'rgba(127,212,255,'+(1-k/41).toFixed(2)+')')}
+  R(xs-6,yT-3,24,3,'#c9c6d4');R(xs-6,yB+1,24,3,'#c9c6d4');R(xs-7,yT-3,1,h+7,'#4a5190');R(xs+18,yT-3,1,h+7,'#4a5190');
+  const q=pos(ph2);R(100+q[0]-1,q[1]-1,2,2,'#fff');R(xs-12,yB-20,5,2,'#f5bd41');R(xs-10,yB-22,3,6,'#e2483f');
+  TS('ticks: '+b,44,104,10,'#ffd75e');TS('ticks: '+b2,134,104,10,'#7fd4ff')}}
+function kid(x,base,age,shirt,hair){const h=26+(age-8)*2.2,sk='#f2bf96';R(x-4,base-h*.42,4,h*.42,'#3b3a52');R(x+1,base-h*.42,4,h*.42,'#3b3a52');R(x-5,base-2,5,2,'#22202c');R(x+1,base-2,5,2,'#22202c');
+  R(x-6,base-h+10,13,h*.58-10,shirt);R(x-9,base-h+11,3,h*.3,shirt);R(x+7,base-h+11,3,h*.3,shirt);R(x-9,base-h+11+h*.3,3,2,sk);R(x+7,base-h+11+h*.3,3,2,sk);
+  R(x-5,base-h,11,10,sk);R(x-5,base-h-2,11,4,hair);R(x-6,base-h,1,5,hair);R(x+6,base-h,1,5,hair);R(x-2,base-h+4,2,2,'#2a2333');R(x+2,base-h+4,2,2,'#2a2333');R(x-1,base-h+7,4,1,'#b23a3a')}
+function vTwins(mode){const f=(t,st)=>{sky(['#7cc0ee','#9bd0f2','#bfe2f5'],0,92);hills(92,26,3.3,'#b9cde6','#fff');R(0,92,W,36,'#5fae5a');R(0,92,W,2,'#7cc474');
+  const p=st.solved?clamp(st.ts/2.6,0,1):0,a=8+Math.floor(10*p+1e-6),b=8+Math.floor(8*p+1e-6);
+  R(14,70,22,22,'#e2dab8');R(12,64,26,6,'#9a4b36');R(22,80,6,12,'#7a4a28');
+  kid(60,108,mode?8+10*p:8,'#e2483f','#6a3e20');kid(112,108,mode?8+8*p:8,'#3a6ea8','#2a2333');
+  rocket(128,94,46,13,t,false);
+  R(38,6,44,24,'rgba(11,13,26,.6)');R(92,6,40,24,'rgba(11,13,26,.6)');
+  T('Anna',60,12,8,'#f3ead2');T('Ben',112,12,8,'#f3ead2');
+  T((mode&&!st.solved?'?':String(mode?a:8))+' years',60,23,9,'#f5bd41');T((mode&&!st.solved?'?':String(mode?b:8))+' years',112,23,9,'#f5bd41');
+  T('stays on Earth',50,119,7.5,'#17301a',0,FB);T('flies the rocket',128,119,7.5,'#17301a',0,FB)};f.hold=3.4;return f}
+
+/* ---- the magic bomb ---- */
+const SPEEDS=[[3,5],[4,5],[24,25]],SIMK=.7;
+function bombArt(x,y,t,bc){for(let k=1;k<6;k++)R(x-6-k*4,y-1+Math.round(Math.sin(t*20+k)*2),2,2,FW[k%6]);
+  C(x,y,5,'#3a2a5a');R(x-3,y-3,2,2,'#8a6fd0');R(x+3,y-6,2,2,'#c9c6d4');R(x+5,y-8,2,2,Math.floor(t*12)%2?'#fff':'#f5bd41');
+  R(x-9,y-21,18,10,'#14172b');Bx(x-9,y-21,18,10,'#f5bd41');T(bc,x,y-16,7,'#f5bd41')}
+function vBomb(mode){const X0=26,U=31,Y=58;const f=(t,st)=>{space(t,{plain:1,still:1});
+  const sim=mode==='sim'&&st.sim?st.sim:null;let lit=0;if(mode==='sim'&&st.solved)lit=clamp(st.ts/.8,0,1);
+  starBridge(lit,t);cannon();
+  R(X0,102,4*U+1,1,'#4a5a9a');for(let i=0;i<=4;i++){R(X0+i*U,99,1,6,'#8fa3d9');T(String(i),X0+i*U,110,7,'#8fa3d9')}
+  T('light-seconds',X0+2*U,120,6,'#8fa3d9',0,FB);
+  let bx=0,by=Y,ours='0',bc='0',pop=-1,gone=false;
+  if(mode==='hop'){const p=st.solved?clamp(st.ts/3,0,1):0;bx=4*p;by=Y-Math.abs(Math.sin(p*5*Math.PI))*7;ours=String(Math.floor(5*p+1e-6));bc='';
+    if(st.hint||st.solved)for(let k=1;k<=5;k++){const x=X0+k*.8*U;R(x,Y+9,1,4,'#f5bd41');T(k+'s',x,Y+18,6,'#f5bd41')}}
+  else if(mode==='clock'){const p=st.solved?clamp(st.ts/3,0,1):0;bx=4*p;ours=st.solved?String(Math.floor(5*p+1e-6)):'5';bc=st.solved?String(Math.floor(3*p+1e-6)):'?'}
+  else if(sim){const v=SPEEDS[sim.choice][0]/SPEEDS[sim.choice][1],s=Math.sqrt(1-v*v),Ts=sim.el/SIMK,tp=3/s,tt=Math.min(Ts,tp);bx=v*tt;ours=String(Math.floor(tt+1e-6));bc=String(Math.floor(tt*s+1e-6));
+    if(Ts>=tp)pop=Ts-tp;if(bx>5.3)gone=true}
+  const px=X0+bx*U;
+  if(pop>=0){if(pop<2.2)for(let k=0;k<20;k++){const a=k/20*TAU,r=pop*26;R(px+Math.cos(a)*r,Y+Math.sin(a)*r,2,2,FW[k%6])}if(pop<.25)C(px,Y,10,'#fff')}
+  else if(!gone)bombArt(px,by,t,bc===''?'3s':bc+'s');
+  R(4,4,60,13,'#14172b');Bx(4,4,60,13,'#4a5190');T('our clock: '+ours+' s',34,10.5,7,'#f3ead2');
+  if(mode==='clock'||sim){T('fuse: 3 s',146,10.5,7,'#f5bd41')}
+  if(sim){T('speed',96,10,7,'#aeb1d0','right',FB);F(SPEEDS[sim.choice][0],SPEEDS[sim.choice][1],106,10,7,'#f3ead2')}};
+  f.hold=3.6;return f}
+
+/* ---- squishy things ---- */
+function vSquish(len,sn,sd,kind,unit,o){o=o||{};const s=sn/sd,res=len*s;const f=(t,st)=>{
+  if(kind==='rocket')space(t,{plain:1});else{sky(['#5fb0e8','#7cc0ee','#9bd0f2','#bfe2f5'],0,80);hills(80,26,4.2,'#b9cde6','#fff');R(0,80,W,48,'#5fae5a');R(0,84,W,3,'#6a6570');R(0,82,W,1,'#3a3a4a')}
+  const X0=30,L=120,y=kind==='rocket'?46:62,hh=kind==='rocket'?16:18,p=st.solved?ease(clamp(st.ts/1.6,0,1)):0,fct=1-(1-s)*p,w=L*fct;
+  const gc=kind==='rocket'?'#4a5190':'#2a5a8a';for(let x=X0;x<X0+L;x+=4){R(x,y-2,2,1,gc);R(x,y+hh+3,2,1,gc)}R(X0,y-2,1,hh+6,gc);R(X0+L,y-2,1,hh+6,gc);
+  if(st.solved)for(let i=0;i<6;i++)R(X0-8-((t*90+i*13)%22),y+i*hh/5,7,1,kind==='rocket'?'#8fa3d9':'#f4f8ff');
+  const jx=st.solved?Math.round(Math.sin(t*40))*.5:0;
+  if(kind==='rocket')rocket(X0+jx,y,w,hh,t,st.solved);else if(kind==='tram')tramCar(X0+jx,y,w,hh);else train(X0+jx,y,w,hh);
+  const ry=kind==='rocket'?82:96,tick=len<=20?1:10,n=len/tick,tc=kind==='rocket'?'#8fa3d9':'#17301a';
+  R(X0,ry,L+1,1,tc);for(let i=0;i<=n;i++)R(X0+i*L/n,ry-2,1,i%5===0||n<=10?5:3,tc);T('0',X0,ry+8,7,tc);T(String(len),X0+L,ry+8,7,tc);
+  if(st.hint||st.solved){const per=n/sd;for(let g=0;g<sd;g++){const a=X0+g*per*L/n+1,b=X0+(g+1)*per*L/n-1;R(a,ry+3,b-a,2,g<sn?'#f5bd41':(kind==='rocket'?'#3d4470':'#3f8a4a'))}}
+  if(st.solved&&p>=1){R(X0+w,ry-10,1,10,'#e2483f');TS(res+' '+unit,X0+w,ry+19,10,kind==='rocket'?'#43c5ae':'#fff')}
+  else T('standing still: '+len+' '+unit,X0+L/2,ry+19,7,tc,0,FB);
+  if(o.speed){T('speed',84,14,8,kind==='rocket'?'#aeb1d0':'#17301a','right',FB);F(o.speed[0],o.speed[1],94,14,8,kind==='rocket'?'#f3ead2':'#17301a')}else if(o.label)T(o.label,90,14,9,kind==='rocket'?'#f5bd41':'#17301a')};
+  f.hold=3.2;return f}
+
+/* ---- the fly-over ---- */
+function note(msg,c){const w=TW(msg,8)+10;R(90-w/2,6,w,13,'rgba(11,13,26,.78)');T(msg,90,12.5,8,c)}
+function vMJ(mode){const X0=25,L=130,GY=96,ink='#17301a';const f=(t,st)=>{meadow(t);const sim=mode==='sim'&&st.sim?st.sim:null,go=Math.max(st.th,st.ts);
+  if(sim){const v=SPEEDS[sim.choice][0]/SPEEDS[sim.choice][1],s=Math.sqrt(1-v*v),el=sim.el,w=L*s,cm=Math.round(200*s);
+    if(el<1.4){for(let i=0;i<26;i++)R(((rnd(i)*W-el*420*(.5+rnd(i+5)))%W+W)%W,62+rnd(i+9)*62,16,1,'#8fd08a');
+      const x=X0+(1.4-el)*330;mjLie(x,GY-16,w,t,false);ball(x+w+9*s,GY-6,6,s)}
+    else{mjLie(X0,GY-16,w,t,false);ball(X0+w+9*s,GY-6,6,s);
+      R(X0,GY+5,w,2,'#f5bd41');R(X0,GY+2,1,8,'#f5bd41');R(X0+w-1,GY+2,1,8,'#f5bd41');
+      R(X0+w/2-22,GY+11,44,13,'rgba(11,13,26,.78)');T(cm+' cm',X0+w/2,GY+17.5,10,'#f5bd41');
+      if(el<1.52)R(0,0,W,H,'rgba(255,255,255,.85)')}
+    R(X0,68,78,2,'#7fd4ff');R(X0,65,1,8,'#7fd4ff');R(X0+77,65,1,8,'#7fd4ff');R(X0+15,52,48,11,'rgba(11,13,26,.78)');T('you: 120 cm',X0+39,57.5,8,'#7fd4ff');
+    [[4,4,1,1],[W-4,4,-1,1],[4,H-4,1,-1],[W-4,H-4,-1,-1]].forEach(k=>{R(k[2]>0?k[0]:k[0]-10,k[3]>0?k[1]:k[1]-1,10,1,'#f3ead2');R(k[2]>0?k[0]:k[0]-1,k[3]>0?k[1]:k[1]-10,1,10,'#f3ead2')});
+    if(Math.floor(t*2)%2)C(12,12,2,'#e2483f');T('SHIP CAMERA',18,12,8,'#17301a','left');
+    T('speed',W-30,12,8,ink,'right');F(SPEEDS[sim.choice][0],SPEEDS[sim.choice][1],W-22,12,7,ink);return}
+  mjLie(X0,GY-16,L,t,true);ball(X0+L+9,GY-6,6,1);
+  R(X0,GY-22,L,1,ink);R(X0,GY-24,1,5,ink);R(X0+L-1,GY-24,1,5,ink);
+  T('200 cm',mode==='pieces'?X0+L/2:X0+L-14,GY-28,8,ink);
+  const ry=GY+7;R(X0,ry,L,1,ink);for(let i=0;i<=5;i++)R(X0+i*L/5,ry-2,1,6,ink);
+  if(mode==='pieces'){for(let i=0;i<5;i++)TS(st.solved?'40':'?',X0+(i+.5)*L/5,ry+12,10,st.solved?'#9be58a':'#f5bd41');
+    if(st.solved)note('5 pieces of 40 cm','#9be58a');else if(go>=0)note('5 pieces, all the same','#f5bd41')}
+  else{R(X0,GY-38,78,2,'#2a5a8a');R(X0,GY-41,1,8,'#2a5a8a');R(X0+77,GY-41,1,8,'#2a5a8a');T('you: 120 cm',X0+39,GY-45,8,ink);
+    for(let i=0;i<5;i++){const lit=i<3&&(st.solved||(go>=0&&go>i*.5));if(lit)R(X0+i*L/5+1,ry+2,L/5-2,3,'#f5bd41');
+      TS(lit?String(mode==='check'?40*(i+1):i+1):'40',X0+(i+.5)*L/5,ry+13,9,lit?'#f5bd41':'#f3ead2')}
+    if(st.solved)note(mode==='check'?'3 pieces of 40 = 120 cm':'3 pieces!','#9be58a')}};
+  f.hold=2.6;return f}
+
+/* ---- E = mc² ---- */
+function crate(x,y,s){R(x,y,s,s,'#6a3e20');R(x+1,y+1,s-2,s-2,'#b07a3c');R(x+1,y+1,s-2,1,'#d09a58');if(s>=6){const m=Math.floor(s/2);R(x+m-1,y+2,2,s-4,'#ffd75e');R(x+m,y+2,1,1,'#fff')}}
+function wt(x,y,c){R(x+2,y,4,2,c);R(x+1,y+2,6,1,c);R(x,y+3,8,5,c);R(x+1,y+4,2,1,'rgba(255,255,255,.5)')}
+function vBlocks(k,n,kind,o){o=o||{};const cr=kind==='crate';const f=(t,st)=>{board();const go=Math.max(st.th,st.ts),cols=Math.min(k,5),rows=Math.ceil(k/cols),gap=6,top=cr?11:0;
+  const cs=Math.max(4,Math.min(10,Math.floor((152-(cols-1)*gap)/(cols*n)),Math.floor((82-rows*(top+9))/(rows*n)))),bw=n*cs,rh=bw+top+9,x0=90-(cols*bw+(cols-1)*gap)/2,y0=22+(84-rows*rh)/2;
+  T(o.cap||(cr?k+(k===1?' gram':' grams')+' of stuff':k+' squares of '+n+' × '+n),90,13,7.5,CH.w);
+  for(let b=0;b<k;b++){const bx=x0+(b%cols)*(bw+gap),by=y0+Math.floor(b/cols)*rh+top,on=go>=0&&go>b*.45;
+    if(cr&&(!o.div||st.solved||on)){wt(bx+bw/2-12,by-10,'#c9c6d4');T('1 g',bx+bw/2+4,by-5.5,7,CH.w)}
+    for(let i=0;i<n;i++)for(let j=0;j<n;j++){const x=bx+j*cs,y=by+i*cs;cr?crate(x,y,cs-1):tile(x,y,cs-1,i+j);if(st.solved&&Math.floor(st.ts*7+b*2+i*3+j*5)%9===0)R(x+1,y+1,2,2,'#fff')}
+    if(on||st.solved)T(String(o.div?b+1:(b+1)*n*n),bx+bw/2,by+bw+5,8,CH.y)}
+  if(st.solved)T(o.div?k+' grams':cr?k*n*n+' crates = '+k*n*n*10+' million chocolate bars':k+' × '+n+'² = '+k*n*n,90,112,cr&&!o.div?7.5:9,CH.g)};
+  f.hold=2.8;return f}
+function vEmc(stage){return(t,st)=>{board();const y=40,sz=28,parts=['E','=','m','c²'],cx=[];let tot=0;const ws=parts.map((p,i)=>{const w=TW(p,sz)+(i<3?7:0);tot+=w;return w});let x=90-tot/2;
+  parts.forEach((p,i)=>{const w=TW(p,sz);cx.push(x+w/2);T(p,x+w/2,y,sz,i===0?CH.y:i===2?CH.p:i===3?CH.b:CH.w);x+=ws[i]});
+  if(stage){const w=TW('c²',sz);bubble(cx[3]-w/2-3,y-sz*.6,w+6,sz*1.2,CH.y);T('first!',cx[3],y-sz*.6-5,7.5,CH.y);
+    T('E = m × c × c',90,82,14,CH.w);T('energy = mass × light speed × light speed',90,100,7.5,CH.d)}
+  else{const bx=cx[0]-3,by=62+Math.round(Math.sin(t*6));R(bx+3,by,3,4,CH.y);R(bx+1,by+3,5,2,CH.y);R(bx+2,by+5,3,4,CH.y);T('energy',cx[0],80,8,CH.y);
+    wt(cx[2]-4,63,CH.p);T('mass',cx[2],80,8,CH.p);T('how much stuff',cx[2],89,7,CH.d);
+    for(let k=0;k<6;k++)R(cx[3]+18-k*3,66+Math.round(Math.sin(t*14+k)),2,2,k?'rgba(127,212,255,'+(1-k/6).toFixed(2)+')':'#fff');T('light speed',cx[3]+14,80,8,CH.b);
+    T('a tiny bit of stuff = a GIANT pile of energy',90,106,7.5,CH.g)}}}
+function vCsq(stage){return(t,st)=>{board();const go=Math.max(st.th,st.ts),y=70;
+  T('c  =  300,000,000',90,20,13,CH.w);T('a 3 and 8 zeros',90,33,7.5,CH.b);T('c² = c × c',90,50,9,CH.d);
+  const a=stage>0||st.solved?'9':'?',b=stage>0?(st.solved?'16':'?'):'';
+  T('c² =',40,y,13,CH.w);R(58,y-9,18,18,'#14302b');Bx(58,y-9,18,18,stage===0&&!st.solved?CH.y:CH.g);T(a,67,y,13,a==='?'?CH.y:CH.g);
+  T('and',87,y,9,CH.w);R(98,y-9,22,18,'#14302b');Bx(98,y-9,22,18,stage===1?(st.solved?CH.g:CH.y):CH.d);if(b)T(b,109,y,13,b==='?'?CH.y:CH.g);T('zeros',137,y,9,CH.w);
+  if(stage===1&&st.solved)T('90,000,000,000,000,000',90,98,10,CH.g);
+  else if(stage===1&&go>=0){T('10 × 10 = 100',50,94,8,CH.y);T('1 zero, then 2',50,104,7,CH.d);T('100 × 100 = 10,000',128,94,8,CH.y);T('2 zeros, then 4',128,104,7,CH.d)}
+  else if(stage===0&&go>=0)T('3 × 3',67,92,9,CH.y)}}
+function vAnti(){return(t,st)=>{space(t,{plain:1,still:1});const tt=t%3.6,cx=90,cy=60;
+  if(tt<1.5){const d=60*(1-tt/1.5);C(cx-d-6,cy,6,'#4aa3d9');R(cx-d-9,cy-3,2,2,'#bfe6ff');C(cx+d+6,cy,6,'#e2483f');R(cx+d+3,cy-3,2,2,'#ffc0b8');
+    T('normal stuff',36,90,8,'#7fd4ff');T('antimatter',144,90,8,'#ff8f88')}
+  else{const p=(tt-1.5)/2.1;if(p<.15)C(cx,cy,Math.round(10+p*120),'#fff');
+    for(let k=0;k<16;k++){const a=k/16*TAU,r=8+p*70;R(cx+Math.cos(a)*r-1,cy+Math.sin(a)*r*.7-1,3,3,FW[k%2?0:5])}
+    for(let k=0;k<6;k++){const a=k/6*TAU+.5,r=p*52;crate(cx+Math.cos(a)*r-4,cy+Math.sin(a)*r*.7-4,8)}
+    TS('ALL the mass becomes energy!',90,110,9,'#f5bd41')}
+  TS('stuff + antimatter',90,14,9,'#f3ead2')}}
+function vHalfFuel(){return(t,st)=>{board();const go=Math.max(st.th,st.ts),e=go<0?0:ease(clamp(go/.8,0,1));
+  T('4 grams of fuel',90,14,7.5,CH.w);Bx(34,42,46,36,'#ff8f88');Bx(100,42,46,36,'#7fd4ff');T('antimatter',57,86,8,'#ff8f88');T('normal stuff',123,86,8,'#7fd4ff');
+  for(let i=0;i<4;i++){const sx=62+i*16,sy=24,left=i<2,tx=(left?44:110)+(i%2)*18,ty=56;wt(sx+(tx-sx)*e,sy+(ty-sy)*e,e>.5?(left?'#e2483f':'#4aa3d9'):'#c9c6d4')}
+  if(st.solved){T('2 g',57,98,9,CH.g);T('2 g',123,98,9,CH.g)}}}
+const FUEL=[1,2,3];
+function vMars(){return(t,st)=>{space(t,{plain:1,still:1});const x0=30,x1=150,y=62,sim=st.sim;
+  C(14,y,13,'#2f7fd0');C(9,y-4,5,'#4fae5a');C(19,y+5,4,'#4fae5a');T('Earth',16,84,7.5,'#8fa3d9');
+  C(162,y,10,'#c96f4a');R(156,y-4,4,2,'#a8502e');R(163,y+3,5,2,'#a8502e');T('Mars',162,84,7.5,'#e08a5a');
+  for(let x=x0;x<x1;x+=6)R(x,y+12,3,1,'#4a5190');
+  let fr=0,crates=0,flame=false,u=0;
+  if(sim){const g=FUEL[sim.choice],need=g*18/36;crates=g*18;u=clamp(sim.el/2.6,0,1);fr=need>1?need*u*1.05:need*(1-(1-u)*(1-u));flame=u<1&&(need>1||u<.7);
+    if(sim.el<.35)C(x0-4,y,Math.round(6+sim.el*30),'rgba(255,255,255,'+(1-sim.el/.35).toFixed(2)+')')}
+  const rx=x0+(x1-x0)*fr;
+  if(st.solved){rocket(x1-20,y-15,22,9,t,false);R(164,y-22,1,13,'#f3ead2');R(165,y-22,8,6,'#e2483f');R(168,y-21,2,4,'#fff');R(167,y-20,4,2,'#fff')}
+  else if(rx<W+10)rocket(rx-22,y-5,24,10,t,flame);
+  R(4,4,84,13,'#14172b');Bx(4,4,84,13,'#4a5190');T('energy: '+(sim?Math.floor(crates*Math.min(1,u*3)+1e-6):0)+' crates',46,10.5,8,'#f3ead2');T('trip needs 36',146,10.5,8,'#f5bd41');
+  if(sim){const g=FUEL[sim.choice];for(let i=0;i<g*2;i++)wt(8+i*10,102,i<g?'#e2483f':'#4aa3d9');T(g+' g antimatter + '+g+' g normal stuff',12+g*20,107,7.5,'#aeb1d0','left')}}}
+
+/* ---- title and level-complete pictures ---- */
+function titlePic(t,st){bern(t,{tram:1});einstein(14,H-8-58,2,talking(),t);
+  let ts=42;while(ts>14&&TW('RELATIVITY',ts)>150)ts-=1;T('RELATIVITY',91.5,23.5,ts,'#0b0d1a');T('RELATIVITY',90,22,ts,'#f3ead2');R(40,41,100,2,'#e2483f');R(58,45,64,11,'rgba(11,13,26,.7)');T('BERN · 1905',90,50.5,9,'#f5bd41')}
+let fwTick=-1;
+function winPic(t,st){bern(t,{night:1});const k=Math.floor(t*1.5);if(k!==fwTick){fwTick=k;burst(20+Math.random()*140,10+Math.random()*34,22,36)}
+  einstein(74,H-10-58-Math.abs(Math.sin(t*5))*8,2,false,t);
+  const last=cur.k===LEVELS.length-1;R(28,4,124,last?50:46,'rgba(11,13,26,.72)');Bx(28,4,124,last?50:46,'#4a5190');
+  if(last){let ws=13;while(ws>8&&TW('JUNIOR RELATIVITY',ws)>116)ws-=1;TS('JUNIOR RELATIVITY',90,14,ws,'#f3ead2');TS('SCIENTIST',90,28,ws,'#f5bd41')}else{let ws=20;while(ws>10&&TW('WUNDERBAR!',ws)>112)ws-=1;TS('WUNDERBAR!',90,18,ws,'#f3ead2')}
+  const n=cur.stars||0;for(let i=0;i<3;i++){const on=i<n&&t>.4+i*.35;spr(STAR,{y:on?'#f5bd41':'#3b3a52'},90-22+i*15,last?36:32,1.5)}}
+
+/* ================= the script ================= */
+const say=(scene,text)=>({type:'say',text,draw:cine(scene)});
+const show=(viz,text,pre)=>({type:'show',text,draw:viz,pre:pre||{}});
+const ask=(viz,text,expr,ans,hint,after)=>({type:'ask',text,draw:viz,expr,ans,hint,after});
+const HINT={hint:1},DONE={solved:1};
+const CHAPTERS=['Math tools','Light and ze machine','Relativity!'];
+const LEVELS=[
+{name:'Chocolate Rows',ch:0,beats:()=>[
+  say('bern','Guten Tag! I am Albert Einstein. Velcome to Bern, in Switzerland!'),
+  say('bern','Here, in ze year 1905, I had a big idea about light, time and space.'),
+  say('tram','I call it RELATIVITY. Fast clocks tick slow! Fast rockets get short!'),
+  say('bern','Sounds crazy, ja? I vill show you. But first ve need some math tools.'),
+  say('room','Tool number one is TIMES. Look, I have Swiss chocolate!'),
+  show(vGrid(3,4),'Here are 3 rows of chocolate. Each row has 4 pieces. Count vith me: 4, 8, 12!',HINT),
+  show(vGrid(3,4),'3 rows of 4 makes 12. Ve write it like zis: 3 × 4 = 12.',DONE),
+  ask(vGrid(2,5),'2 rows of 5. How many pieces?','2 × 5 = ?',10,'Count ze rows: 5, and 5 more.'),
+  ask(vGrid(3,3),'3 rows of 3. How many?','3 × 3 = ?',9,'Count by threes: 3, 6, ...'),
+  ask(vGrid(4,5),'4 rows of 5. A big one!','4 × 5 = ?',20,'Count by fives: 5, 10, 15, ...'),
+  ask(vGrid(5,5),'5 rows of 5. Ze biggest chocolate in Bern!','5 × 5 = ?',25,'Count by fives, one for each row.')]},
+{name:'Fair Shares',ch:0,beats:()=>[
+  say('room','Mmm, chocolate! Oh, my friends are coming to visit.'),
+  say('room','I must share fair. Everybody gets ze same. Zat is called DIVIDING.'),
+  show(vShare(12,3),'12 chocolates on 3 plates. One for you, one for you, one for you... Each plate gets 4.',DONE),
+  show(vGrid(3,4),'Ve write 12 ÷ 3 = 4. It is TIMES backvards, because 3 × 4 = 12.',DONE),
+  ask(vShare(6,2),'6 chocolates, 2 plates. How many on each plate?','6 ÷ 2 = ?',3,'Vat times 2 makes 6? Vatch ze plates!'),
+  ask(vShare(12,4),'12 chocolates, 4 plates.','12 ÷ 4 = ?',3,'Vat times 4 makes 12? Vatch ze plates!'),
+  ask(vShare(20,5),'20 chocolates, 5 plates.','20 ÷ 5 = ?',4,'Vat times 5 makes 20? Vatch ze plates!'),
+  ask(vShare(25,5),'25 chocolates, 5 plates. A party!','25 ÷ 5 = ?',5,'Vat times 5 makes 25? Vatch ze plates!')]},
+{name:'Parentheses First',ch:0,beats:()=>[
+  say('office','Zis is my desk at ze patent office in Bern. So many papers!'),
+  say('office','See zese round hooks: ( ). Zey are called parentheses.'),
+  say('office','Zey are like a hug around some numbers. Zey shout: DO ME FIRST!'),
+  show(vParen(['2 ×',{s:'3 + 1',v:4}],8),'Look: 2 × (3 + 1). First ve do ze inside of ze hug: 3 + 1 = 4.'),
+  show(vParen(['2 ×',{s:'3 + 1',v:4}],8),'Now it is easy: 2 × 4 = 8. Alvays ze hug first!',DONE),
+  ask(vParen([{s:'2 + 3',v:5},'× 2'],10),'Do ze inside first!','(2 + 3) × 2 = ?',10,'Inside ze hug: 2 + 3 = 5. Zen 5 × 2.'),
+  ask(vParen(['10 −',{s:'4 + 3',v:7}],3),'Ze hug first, zen take avay.','10 − (4 + 3) = ?',3,'Inside ze hug: 4 + 3 = 7. Zen 10 − 7.'),
+  ask(vParen(['12 ÷',{s:'2 + 2',v:4}],3),'Ze hug first, zen share.','12 ÷ (2 + 2) = ?',3,'Inside ze hug: 2 + 2 = 4. Zen 12 ÷ 4.'),
+  ask(vParen([{s:'1 + 2',v:3},'×',{s:'2 + 2',v:4}],12),'Two hugs! Do both, zen times.','(1 + 2) × (2 + 2) = ?',12,'Ze hugs make 3 and 4. Zen 3 × 4.')]},
+{name:'Squares',ch:0,beats:()=>[
+  say('bern','Look down! Ze streets of Bern are made of little stone tiles.'),
+  say('bern','Ven you multiply a number by itself, ve say it is SQUARED. Because it makes a square!'),
+  show(vSqGrow(),'1 × 1, 2 × 2, 3 × 3, 4 × 4... Each one is a perfect square of tiles.'),
+  show(vGrid(3,3,{sq:1}),'Ve write a tiny 2 up high. 3² means 3 × 3. Zat is 9 tiles.',DONE),
+  ask(vGrid(2,2,{sq:1}),'2 squared means 2 × 2.','2^2 = ?',4,'Count ze tiles: 2 rows of 2.'),
+  ask(vGrid(4,4,{sq:1}),'4 squared. How many tiles?','4^2 = ?',16,'4 rows of 4: count 4, 8, 12, ...'),
+  ask(vGrid(5,5,{sq:1}),'5 squared. You know zis one from ze chocolate!','5^2 = ?',25,'5 rows of 5: count by fives.'),
+  ask(vGrid(10,10,{sq:1}),'10 squared. Ten rows of ten!','10^2 = ?',100,'Count by tens: 10, 20, 30, ...'),
+  show(vBlocks(2,3,'tile'),'One more rule. In 2 × 3², ze tiny 2 belongs only to ze 3. So ve square FIRST, zen multiply: 2 × 9 = 18.',DONE),
+  ask(vBlocks(3,2,'tile'),'Square first, zen multiply.','3 × 2^2 = ?',12,'2² = 4. Zen 3 × 4.'),
+  ask(vBlocks(2,5,'tile'),'Square first, zen multiply.','2 × 5^2 = ?',50,'5² = 25. Zen 25 + 25.')]},
+{name:'Square Roots',ch:0,beats:()=>[
+  say('bern','Now ve go backvards! I have a pile of tiles. I vant to build a square.'),
+  say('bern','How long is one side? Zat is ze SQUARE ROOT. Its sign looks like a little roof.'),
+  show(vRoot(16),'16 tiles make a square. Count one side: it is 4 tiles long.',HINT),
+  show(vRoot(16),'So ze square root of 16 is 4. Because 4 × 4 = 16.',DONE),
+  ask(vRoot(9),'9 tiles. How long is one side of ze square?','r[9] = ?',3,'Vich number times itself makes 9?'),
+  ask(vRoot(25),'25 tiles. How long is one side?','r[25] = ?',5,'Vich number times itself makes 25?'),
+  ask(vRoot(100),'100 tiles! How long is one side?','r[100] = ?',10,'Zink of ten rows of ten.'),
+  ask(vRoot(1),'A tricky one. Only 1 tile!','r[1] = ?',1,'1 × 1 = 1. Ze square is just 1 tile vide.')]},
+{name:'Pieces of Cheese',ch:0,beats:()=>[
+  say('room','Lunch time! Swiss cheese. Ze one vith ze holes, ja?'),
+  say('room','I cut it into 4 equal pieces. One piece is one quarter. Ve write 1 over 4.'),
+  show(vPie(4,1),'Ze bottom number says how many pieces make ze whole cheese. Ze top says how many you take.'),
+  show(vPie(4,3),'Here I take 3 of ze 4 pieces. Zat is 3/4. Three quarters!'),
+  show(vPie(4,4,1),'How many quarters fit in 1 whole cheese? Count zem: 4! Ve write 1 ÷ 1/4 = 4.',HINT),
+  ask(vPie(2,2,1),'How many halves fit in 1 whole cheese?','1 ÷ {1/2} = ?',2,'Count ze pieces of ze cheese.'),
+  ask(vPie(5,5,1),'How many fifths fit in 1 whole cheese?','1 ÷ {1/5} = ?',5,'Count ze pieces of ze cheese.'),
+  show(vFracOf(3,5,10),'Fractions vork on numbers too! 3/5 of 10: make 5 equal groups, zen take 3 groups. Zat is 6.',HINT),
+  ask(vFracOf(1,2,10),'Half of 10 chocolates.','{1/2} of 10 = ?',5,'Make 2 equal groups. Take 1 group.'),
+  ask(vFracOf(4,5,10),'5 equal groups. Take 4 of zem.','{4/5} of 10 = ?',8,'Each group has 2. Take 4 groups: 2, 4, 6, ...'),
+  ask(vFracOf(3,5,20),'A big one! 5 equal groups, take 3.','{3/5} of 20 = ?',12,'20 ÷ 5 = 4 in each group. Take 3 groups.')]},
+{name:'Ze Fastest Zing',ch:1,beats:()=>[
+  say('night','Look at ze stars over ze Alps. Zeir light flew a very long vay to reach your eyes.'),
+  say('night','Light is ze fastest zing zere is. In ONE second it flies 7 times around ze Earth!'),
+  show(vEarthLight(),'Zoom! Zat is 300,000 kilometers every second. Nothing can go faster. Not even my bicycle.'),
+  ask(vZeros(),'In meters it is a 3 vith lots of zeros. How many zeros?','? zeros',8,'Count zem one by one.'),
+  show(vRace(1,1,5),'How far light flies in 1 second is called 1 light-second. In 5 seconds it flies 5 light-seconds.',DONE),
+  show(vRace(1,2,10),'Rockets are slower. Speed 1/2 means half as fast as light. Light flies 10, ze rocket only 5.',DONE),
+  ask(vRace(3,5,10),'Zis rocket has speed 3/5. Light flies 10 light-seconds. How far does ze rocket fly?','{3/5} of 10 = ?',6,'10 ÷ 5 = 2. Take 3 of zose.'),
+  ask(vRace(4,5,5),'Speed 4/5 for 5 seconds. How many light-seconds?','{4/5} of 5 = ?',4,'5 groups of 1. Take 4 groups.'),
+  ask(vRace(4,5,10),'Speed 4/5 for 10 seconds. How far?','{4/5} of 10 = ?',8,'10 ÷ 5 = 2. Take 4 of zose.')]},
+{name:'Fraction Tricks',ch:1,beats:()=>[
+  say('office','Now I show you my secret formula. It is like a machine vith 3 parts.'),
+  say('office','Part 1: SQUARE ze speed. Part 2: take it avay from 1. Part 3: SQUARE ROOT.'),
+  say('office','But ze speed is a fraction! So first, three little fraction tricks.'),
+  show(vArea(5,9,'sq'),'Trick 1: square ze top AND ze bottom. 3/5 squared is 9/25. See? 9 of ze 25 little squares.',HINT),
+  ask(vArea(5,16,'sq'),'Square ze top and ze bottom.','({4/5})^2 = {?/25}',16,'4 × 4 on top. Or count ze yellow squares!'),
+  show(vArea(5,9,'one'),'Trick 2: 1 whole is 25 of 25. Take avay 9 and 16 are left. So 1 − 9/25 = 16/25.',HINT),
+  ask(vArea(5,16,'one'),'1 whole is 25 of 25. Take avay 16.','1 − {16/25} = {?/25}',9,'25 − 16. Or count ze blue squares!'),
+  show(vArea(5,16,'rt'),'Trick 3: root ze top and root ze bottom. Ze root of 16/25 is 4/5.',DONE),
+  ask(vArea(5,9,'rt'),'Root ze top and root ze bottom.','r[{9/25}] = {?/5}',3,'Vich number times itself makes 9?'),
+  ask(vArea(4,1,'rt'),'One more. Ze top is easy: ze root of 1 is 1.','r[{1/16}] = {1/?}',4,'Vich number times itself makes 16?')]},
+{name:'Ze Slow-Down Machine',ch:1,beats:()=>[
+  say('office','Here it is! My Slow-Down Machine. Clank, clank, whirr!'),
+  say('office','A speed goes in. Out comes ze SLOW-DOWN NUMBER.'),
+  say('office','It tells us how slow a fast clock ticks, and how short a fast rocket gets.'),
+  show(vMachine([[3,5],[9,25],[16,25],[4,5]],3),'Speed 3/5 goes in. Square: 9/25. Take from 1: 16/25. Root: 4/5. Done!',DONE),
+  ask(vMachine([[4,5],'?',null,null],0,'',[16,25]),'Now you! Speed 4/5 goes in. Part 1: square it.','({4/5})^2 = {?/25}',16,'Square ze top: 4 × 4.'),
+  ask(vMachine([[4,5],[16,25],'?',null],1,'',[9,25]),'Part 2: take it avay from 1.','1 − {16/25} = {?/25}',9,'1 whole is 25 of 25. So 25 − 16.'),
+  ask(vMachine([[4,5],[16,25],[9,25],'?'],2,'',[3,5]),'Part 3: square root.','r[{9/25}] = {?/5}',3,'Vich number times itself makes 9?','Speed 4/5 gives slow-down number 3/5. Remember zat!'),
+  show(vMachine([null,[15,16],'?',null],1,'already squared!'),'Zis turbo rocket is SUPER fast. I squared its speed for you already: 15/16.'),
+  ask(vMachine([null,[15,16],'?',null],1,'already squared!',[1,16]),'Part 2: take it avay from 1.','1 − {15/16} = {?/16}',1,'1 whole is 16 of 16. So 16 − 15.'),
+  ask(vMachine([null,[15,16],[1,16],'?'],2,'',[1,4]),'Part 3: square root.','r[{1/16}] = {1/?}',4,'Vich number times itself makes 16?'),
+  ask(vPie(4,4,1),'Slow-down number 1/4. Ze turbo clock is how many times slower?','1 ÷ {1/4} = ?',4,'How many quarters fit in 1 whole?'),
+  show(vFormula(),'Grown-up scientists write my machine like zis. Now YOU can read it!')]},
+{name:'Sleepy Clocks',ch:2,beats:()=>[
+  say('tram','Every day I rode ze tram past zis big clock tower in Bern.'),
+  say('tram','I asked myself: vat if my tram flew almost as fast as light?'),
+  say('tram','Ze answer: a moving clock ticks SLOWER! Ve call it time dilation.'),
+  show(vLightClock(),'Here is vy. Zis clock ticks ven light bounces up and down. Tick, tock.'),
+  show(vLightClock(),'In a fast rocket ze light must fly a long zig-zag. Light cannot hurry! So each tick takes longer.'),
+  show(vClocks(4,5,10,'seconds',{speed:[3,5]}),'Rocket time = slow-down number × our time. Speed 3/5 gives 4/5. Ve count 10 seconds, ze rocket only 8!',DONE),
+  ask(vClocks(3,5,10,'seconds',{speed:[4,5]}),'Speed 4/5 gives slow-down number 3/5. Our clock says 10 seconds. Ze rocket clock?','{3/5} of 10 = ?',6,'10 ÷ 5 = 2. Take 3 of zose.'),
+  ask(vClocks(4,5,5,'years',{speed:[3,5]}),'Speed 3/5 gives 4/5. Ve vait 5 years. Ze rocket clock?','{4/5} of 5 = ?',4,'5 groups of 1. Take 4 groups.'),
+  show(vTwins(0),'Twins Anna and Ben are both 8 years old. Ben flies avay at speed 3/5 for 10 Earth years.'),
+  ask(vClocks(4,5,10,'years',{speed:[3,5]}),'Slow-down number 4/5. How many years go by for Ben?','{4/5} of 10 = ?',8,'10 ÷ 5 = 2. Take 4 of zose.'),
+  ask(vTwins(1),'Ben vas 8. Zen 8 more years on his clock. How old is Ben ven he lands?','8 + 8 = ?',16,'Count on from 8.','Anna is 8 + 10 = 18. Ben is only 16! Ze twins are not ze same age anymore.'),
+  ask(vClocks(1,4,8,'years',{label:'turbo'}),'Ze turbo clock is 4 times slower. Ve vait 8 years. Ze pilot’s clock?','8 ÷ 4 = ?',2,'Share 8 into 4 equal groups.')]},
+{name:'Ze Magic Bomb',ch:2,beats:()=>[
+  say('bridge','Oh nein! Ze Star Bridge has gone dark. Ze space trams cannot cross!'),
+  say('bridge','I have a magic bomb full of starlight. It must go POP right at ze bridge to light it up.'),
+  say('bridge','But its fuse burns for only 3 seconds. And ze bridge is 4 light-seconds avay!'),
+  say('bridge','Even light needs 4 seconds. Too far? No! A fast bomb has a SLOW clock. Let us do ze math.'),
+  ask(vBomb('hop'),'Let us test speed 4/5. How far does ze bomb fly in 5 seconds?','{4/5} of 5 = ?',4,'5 groups of 1. Take 4 groups.','4 light-seconds. Right to ze bridge! So ze trip takes 5 of OUR seconds.'),
+  ask(vMachine([[4,5],[16,25],'?',null],1,'',[9,25]),'Now ze machine. 4/5 squared is 16/25. Take it avay from 1.','1 − {16/25} = {?/25}',9,'1 whole is 25 of 25. So 25 − 16.'),
+  ask(vMachine([[4,5],[16,25],[9,25],'?'],2,'',[3,5]),'And ze square root.','r[{9/25}] = {?/5}',3,'Vich number times itself makes 9?','Slow-down number 3/5!'),
+  ask(vBomb('clock'),'Ze trip takes 5 of our seconds. Ze bomb’s sleepy clock counts only...','{3/5} of 5 = ?',3,'5 groups of 1. Take 3 groups.','3 seconds. Exactly ze fuse! Speed 4/5 is our speed.'),
+  {type:'sim',text:'Ready? Pick ze speed and FIRE!',draw:vBomb('sim'),ok:1,dur:i=>[3.75*SIMK+1.2,5*SIMK+.25,5.6*SIMK+.3][i],
+    popAt:i=>[3.75*SIMK,5*SIMK,-1][i],
+    fail:['Too slow! Ze fuse ran out before ze bridge. Try a faster speed.','','Too fast! Its clock vas so slow, it flew right past ze bridge. Try again.'],
+    after:'POP! Right at ze bridge. Our clock ticked 5 seconds, ze bomb’s clock only 3. Zat is time dilation!'}]},
+{name:'Squishy Rockets',ch:2,beats:()=>[
+  say('alps','One more surprise! Fast zings get SHORTER. But only in ze direction zey fly.'),
+  say('alps','A fast rocket looks squished, like an accordion. Ve call it length contraction.'),
+  say('alps','And ze magic number is... ze slow-down number again!'),
+  show(vSquish(10,4,5,'rocket','meters',{speed:[3,5]}),'Zis rocket is 10 meters long. At speed 3/5 ze slow-down number is 4/5. It looks only 8 meters long!',DONE),
+  ask(vSquish(10,3,5,'rocket','meters',{speed:[4,5]}),'Same rocket, speed 4/5. Slow-down number 3/5. How long does it look?','{3/5} of 10 = ?',6,'10 ÷ 5 = 2. Take 3 of zose.'),
+  ask(vSquish(20,4,5,'tram','meters',{speed:[3,5]}),'A 20 meter tram at speed 3/5. Slow-down number 4/5.','{4/5} of 20 = ?',16,'20 ÷ 5 = 4. Take 4 of zose.'),
+  ask(vSquish(100,1,4,'train','meters',{label:'turbo train'}),'A 100 meter turbo train. Slow-down number 1/4.','100 ÷ 4 = ?',25,'Half of 100 is 50. Half of 50 is ...','It vorks both vays! From inside ze rocket, it is ze GROUND zat looks squished.')]},
+{name:'Ze Fly-Over',ch:2,beats:()=>[
+  say('nap','Look! Michael Jordan, ze basketball star, takes a nap on ze grass.'),
+  say('nap','He is very tall: about 200 centimeters. You are about 120 centimeters.'),
+  say('nap','Ve fly over him in our antimatter rocket. How fast, so he looks exactly as tall as YOU?'),
+  ask(vMJ('pieces'),'Cut his 200 centimeters into 5 equal pieces. How long is each piece?','200 ÷ 5 = ?',40,'20 ÷ 5 = 4. So 200 ÷ 5 = 4 and a zero.'),
+  ask(vMJ('count'),'You are 120. How many pieces of 40 is zat?','120 ÷ 40 = ?',3,'Count ze pieces: 40, 80, 120.','3 of 5 pieces. Ve need slow-down number 3/5!'),
+  ask(vMachine([['?',5],null,null,[3,5]],-1,'',[4,5]),'Vich speed gives slow-down number 3/5? You found it before!','r[1 − ({?/5})^2] = {3/5}',4,'Speed 3/5 gives 4/5. And speed 4/5 gives...?'),
+  ask(vMJ('check'),'Let us check. 3/5 of his 200 centimeters.','{3/5} of 200 = ?',120,'3 pieces of 40: count 40, 80, ...'),
+  {type:'sim',text:'Ready? Pick ze speed and fly over him!',draw:vMJ('sim'),ok:1,dur:i=>3.1,popAt:i=>-1,
+    fail:['Not fast enough. He still looks 160 centimeters long.','','Too fast! Now he looks only 56 centimeters. Like a baby!'],
+    after:'120 centimeters! At speed 4/5 he looks exactly as tall as you. Zat is length contraction!'},
+  say('nap','But vait! Vere does our rocket get so much energy? Zat is my most famous secret. Come!')]},
+{name:'E = mc²',ch:2,beats:()=>[
+  say('office','You saw zis on my chalkboard all along, ja? E = mc². My most famous formula!'),
+  say('office','I found it here in Bern too, a few months after ze sleepy clocks. Same year: 1905!'),
+  say('office','E is energy. m is mass: how much stuff zere is. And c is our old friend, ze speed of light.'),
+  show(vEmc(0),'It says: mass is energy, packed very, very small. A tiny bit of stuff holds a GIANT pile of energy!'),
+  show(vEmc(1),'Energy = mass × c × c. Ze tiny 2 belongs only to ze c. So ve square c FIRST, zen multiply.'),
+  ask(vCsq(0),'Light speed c is a 3 vith 8 zeros. First, square ze 3.','3^2 = ?',9,'3 × 3. Remember ze tiles!'),
+  ask(vCsq(1),'Now ze zeros. Squaring doubles zem: 8 zeros and 8 more.','8 + 8 = ?',16,'Count on from 8. Look: 10 × 10 = 100. One zero became two!','c squared is a 9 vith 16 zeros. Gigantic!'),
+  show(vBlocks(1,3,'crate'),'Zat number is too big to write! So ve pack energy in crates. One crate holds as much energy as 10 million chocolate bars.'),
+  ask(vBlocks(1,3,'crate'),'Energy in crates = grams × 3². A paperclip is 1 gram. How many crates?','1 × 3^2 = ?',9,'3² = 9. Zen 1 × 9.','9 crates. Zat is 90 million chocolate bars, from one paperclip!'),
+  ask(vBlocks(2,3,'crate'),'2 grams, like one dime. Square first, zen multiply!','2 × 3^2 = ?',18,'3² = 9. Zen 9 + 9.'),
+  ask(vBlocks(10,3,'crate'),'10 grams, like two nickels.','10 × 3^2 = ?',90,'3² = 9. Zen 10 × 9. Zat is 9 tens.'),
+  say('alps','Ze Sun does zis all day long! It turns mass into sunshine. Zat is vy it is so bright and varm.'),
+  show(vAnti(),'Our rocket uses antimatter. Ven antimatter touches normal stuff: FLASH! ALL of ze mass turns into energy.'),
+  ask(vBlocks(4,3,'crate',{div:1,cap:'36 crates of energy'}),'A fast trip to Mars needs 36 crates of energy. How many grams must turn into energy?','36 ÷ 3^2 = ?',4,'3² = 9. How many nines make 36? Count ze blocks!'),
+  ask(vHalfFuel(),'Half of it is antimatter, half is normal stuff. How many grams of antimatter?','{1/2} of 4 = ?',2,'Make 2 equal groups of grams.'),
+  {type:'sim',text:'Ready? Load ze antimatter and launch to Mars!',draw:vMars(),ok:1,dur:i=>3.1,popAt:i=>-1,burst:[160,46],
+    opts:FUEL.map(g=>({s:'antimatter',b:g+' g'})),
+    fail:['Not enough! 2 grams of fuel make only 18 crates. Ze rocket stopped halfvay.','','Too much! 6 grams of fuel make 54 crates. Ze rocket zoomed right past Mars!'],
+    after:'Landed on Mars! Just 2 grams of antimatter, a tiny pinch. Zat is ze power of E = mc²!'},
+  say('fest','You did it! Fast clocks tick slow. Fast zings get short. Nothing beats light. And mass is energy!'),
+  say('fest','Zat is special relativity. I zought of it right here in Bern, ven I vas 26 years old.'),
+  say('fest','And YOU learned it in 2nd grade! Stay curious, mein Freund. Auf Wiedersehen!')]}
+];
+
+/* ================= sound ================= */
+let AC=null,gestured=false;
+function ac(){if(save.muted||!gestured)return null;if(!AC){try{AC=new(window.AudioContext||window.webkitAudioContext)()}catch(e){AC=null}}if(AC&&AC.state==='suspended')AC.resume().catch(()=>{});return AC}
+function tone(f,d,type,vol,when,slide){const a=ac();if(!a)return;try{const o=a.createOscillator(),g=a.createGain(),t0=a.currentTime+(when||0);o.type=type||'square';o.frequency.setValueAtTime(f,t0);if(slide)o.frequency.exponentialRampToValueAtTime(Math.max(40,f+slide),t0+d);g.gain.setValueAtTime(vol||.05,t0);g.gain.exponentialRampToValueAtTime(.0001,t0+d);o.connect(g);g.connect(a.destination);o.start(t0);o.stop(t0+d+.03)}catch(e){}}
+function noise(d,vol){const a=ac();if(!a)return;try{const n=Math.floor(a.sampleRate*d),b=a.createBuffer(1,n,a.sampleRate),ch=b.getChannelData(0);for(let i=0;i<n;i++)ch[i]=(Math.random()*2-1)*Math.pow(1-i/n,2);const s=a.createBufferSource(),g=a.createGain(),f=a.createBiquadFilter();f.type='lowpass';f.frequency.value=900;g.gain.value=vol||.25;s.buffer=b;s.connect(f);f.connect(g);g.connect(a.destination);s.start()}catch(e){}}
+function mumble(ch){const a=ac();if(!a)return;try{const F={a:[730,1090],e:[530,1840],i:[300,2200],o:[570,840],u:[320,870],y:[300,2200]}[ch]||[500,1500];
+  const t0=a.currentTime,d=.14,f0=112+Math.random()*30+(ch==='i'||ch==='e'?12:0),o=a.createOscillator(),lfo=a.createOscillator(),lg=a.createGain(),g=a.createGain();
+  o.type='sawtooth';o.frequency.setValueAtTime(f0,t0);o.frequency.linearRampToValueAtTime(f0*(.9+Math.random()*.16),t0+d);
+  lfo.frequency.value=9;lg.gain.value=6;lfo.connect(lg);lg.connect(o.frequency);
+  g.gain.setValueAtTime(.0001,t0);g.gain.linearRampToValueAtTime(.55,t0+.015);g.gain.exponentialRampToValueAtTime(.0001,t0+d);
+  F.forEach((fq,i)=>{const b=a.createBiquadFilter(),bg=a.createGain();b.type='bandpass';b.frequency.value=fq;b.Q.value=6;bg.gain.value=i?.5:1;o.connect(b);b.connect(bg);bg.connect(g)});
+  g.connect(a.destination);o.start(t0);lfo.start(t0);o.stop(t0+d+.03);lfo.stop(t0+d+.03)}catch(e){}}
+const sfx={blip:()=>tone(300+Math.random()*50,.035,'square',.018),tap:()=>tone(520,.05,'triangle',.05),
+  ok:()=>[523,659,784,1047].forEach((f,i)=>tone(f,.13,'square',.045,i*.08)),no:()=>tone(190,.2,'sawtooth',.04,0,-70),
+  win:()=>[523,523,523,659,784,659,784,1047].forEach((f,i)=>tone(f,.17,'square',.045,i*.11)),
+  whoosh:()=>tone(160,.6,'sawtooth',.03,0,700),boom:()=>noise(.7,.3)};
+
+/* ================= game engine ================= */
+let save={stars:[],all:false,muted:false,voice:true,voiceName:''};
+try{const s=JSON.parse(localStorage.getItem('relativity.v1')||'null');if(s&&Array.isArray(s.stars))save=Object.assign(save,s)}catch(e){}
+function persist(){try{localStorage.setItem('relativity.v1',JSON.stringify(save))}catch(e){}}
+const unlocked=k=>save.all||k===0||(save.stars[k]||0)>0||(save.stars[k-1]||0)>0;
+
+const tw={full:'',t0:0,done:true,n:0};
+const st={hint:false,solved:false,th:-1,ts:-1,sim:null};
+let cur={k:-1,beats:[],i:0,stars:0},beat=null,beatT0=0,beatTok=0,hintAt=-1,solvedAt=-1,simAt=0,simBusy=false;
+let input='',answered=false,tries=0,mistakes=0,praiseI=0,qEl=null;
+const PRAISE=['Wunderbar!','Sehr gut!','Ja, genau!','Fantastisch!','Prima!','Richtig!','Super!'];
+const elExpr=$('expr'),elPad=$('pad'),elCh=$('choices'),elNext=$('next'),elRow=$('row'),elLine=$('line'),elTalk=$('talk');
+const RADSVG='<svg viewBox="0 0 12 30" preserveAspectRatio="none" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="square"><path d="M0 18 L3 16 L7 28 L11.5 1.2"/></svg>';
+
+function exprHTML(src){let i=0;
+  function parse(end){let o='';while(i<src.length){const ch=src[i];
+    if(end&&ch===end){i++;return o}
+    if(ch===' '){i++;continue}
+    if(ch==='{'){i++;const a=parse('/'),b=parse('}');o+='<span class="fr"><b>'+a+'</b><i>'+b+'</i></span>';continue}
+    if(ch==='r'&&src[i+1]==='['){i+=2;o+='<span class="rt">'+RADSVG+'<span>'+parse(']')+'</span></span>';continue}
+    if(ch==='^'){i++;o+='<sup>'+src[i++]+'</sup>';continue}
+    if(ch==='?'){i++;o+='<span class="q empty">?</span>';continue}
+    let m=/^\d+/.exec(src.slice(i));if(m){o+='<span>'+m[0]+'</span>';i+=m[0].length;continue}
+    m=/^[A-Za-z]+/.exec(src.slice(i));if(m){o+='<span class="w">'+m[0]+'</span>';i+=m[0].length;continue}
+    o+='<span>'+ch+'</span>';i++}
+    return o}
+  return parse(null)}
+function fitExpr(){let fs=40;elExpr.style.fontSize=fs+'px';while(fs>22&&elExpr.scrollWidth>elExpr.clientWidth){fs-=2;elExpr.style.fontSize=fs+'px'}}
+function updateQ(){if(!qEl)return;qEl.textContent=input||'?';qEl.classList.toggle('empty',!input)}
+
+/* ---- Einstein's voice: the device's speech voice when there is one, a grandpa mumble when there is not ---- */
+const SS=window.speechSynthesis,V={ok:!!(SS&&window.SpeechSynthesisUtterance),broken:false,list:[],speaking:false,cur:null,ever:false,until:0,seq:0};
+const NOVELTY=/bells|bad news|boing|bubbles|cellos|zarvox|whisper|trinoids|organ|jester|superstar|wobble|good news|bahh|deranged|hysterical|princess|pipe/i,
+  GPA=/grandpa|gro(ß|ss)vater|\bopa\b/i,
+  MEN=/\b(daniel|arthur|gordon|oliver|fred|ralph|albert|alex|aaron|bruce|junior|reed|rocko|eddy|tom|lee|rishi|david|mark|george|guy|ryan|christopher|eric|roger|brian|james|thomas|william|martin|markus|yannick|viktor|stefan|conrad|killian|florian|christoph|jonas|ralf|bernd|klaus|male|m(ä|ae)nnlich)\b/i;
+const isDe=v=>String(v.lang||'').toLowerCase().indexOf('de')===0,isEn=v=>String(v.lang||'').toLowerCase().indexOf('en')===0;
+function vScore(v){const n=v.name||'';if(!isEn(v)&&!isDe(v))return -1;if(NOVELTY.test(n))return 1;
+  let sc=isEn(v)?40:30;if(GPA.test(n))sc+=60;else if(MEN.test(n))sc+=30;if(/natural|enhanced|premium/i.test(n))sc+=4;if(v.default&&isEn(v))sc+=2;return sc}
+function vLoad(){try{V.list=(SS.getVoices()||[]).map(v=>({v,s:vScore(v)})).filter(o=>o.s>0).sort((a,b)=>b.s-a.s)}catch(e){V.list=[]}}
+if(V.ok){vLoad();try{SS.addEventListener('voiceschanged',vLoad)}catch(e){}}
+function vPick(){if(save.voiceName&&save.voiceName!=='~mumble'){const o=V.list.find(o=>o.v.name===save.voiceName);if(o)return o}return V.list[0]||null}
+function vEngine(){if(save.muted||!save.voice)return 'off';return V.ok&&!V.broken&&save.voiceName!=='~mumble'?'tts':'mumble'}
+function vBusy(){return V.speaking&&performance.now()<V.until}
+function talking(){return !tw.done||vBusy()}
+const DE_WORDS={ze:'the',zis:'this',zat:'that',zese:'these',zose:'those',zey:'they',zeir:'their',zere:'there',zem:'them',zen:'then',zink:'think',zing:'thing',zings:'things',zought:'thought',ve:'we',vy:'why',vat:'what',ven:'when',vere:'where',vich:'which',vith:'with',vill:'will',vas:'was',vant:'want',vait:'wait',vatch:'watch',vorks:'works',vork:'work',vay:'way',vays:'ways',avay:'away',vide:'wide',velcome:'welcome',backvards:'backwards',alvays:'always',varm:'warm',halfvay:'halfway'};
+const EN_WORDS={ze:'zuh',zis:'ziss',zese:'zeez',zose:'zoze',zey:'zay',zeir:'zair',zere:'zair',zought:'zawt',vy:'vye',vas:'vuz',vait:'vate',vatch:'votch',vorks:'vurks',vork:'vurk',vere:'vair',avay:'a-vay',alvays:'all-vays',halfvay:'half-vay',ja:'yah',wunderbar:'voonderbar',nein:'nine',prima:'preema',richtig:'rish-tish',fantastisch:'fahn-tahs-tish',genau:'guh-now'};
+function mapWords(str,map){return str.replace(/[A-Za-z]+/g,w=>{const r=map[w.toLowerCase()];return !r?w:w[0]===w[0].toUpperCase()?r[0].toUpperCase()+r.slice(1):r})}
+function fracWords(n,d){n=+n;d=+d;const one=n===1;return d===2?(one?'one half':n+' halves'):d===4?(one?'one quarter':n+' quarters'):d===5?(one?'one fifth':n+' fifths'):n+' over '+d}
+function sayText(txt,german){let o=txt.replace(/E\s*=\s*mc²/g,'E equals M C squared').replace(/\(\s*\)/g,' ').replace(/(\d+)\/(\d+)/g,(m,a,b)=>fracWords(a,b))
+    .replace(/²/g,' squared').replace(/×/g,' times ').replace(/÷/g,' divided by ').replace(/−/g,' minus ').replace(/\+/g,' plus ').replace(/=/g,' equals ').replace(/[()]/g,', ').replace(/\.\.\./g,', ')
+    .replace(/\b[A-Z]{2,}\b/g,w=>w.toLowerCase());
+  if(german)o=mapWords(o,DE_WORDS);
+  else o=mapWords(o.replace(/1905/g,'nineteen oh five').replace(/Guten Tag/g,'Gooten tahg').replace(/Sehr gut/g,'Zair goot').replace(/mein Freund/g,'mine froynd').replace(/Auf Wiedersehen/g,'Owf veeder-zayn'),EN_WORDS);
+  return o.replace(/\s+/g,' ').replace(/ ,/g,',').replace(/,(\s*,)+/g,',').replace(/[,:]\s*([.!?])/g,'$1').trim()}
+function vFail(){V.broken=true;V.speaking=false;V.cur=null;try{SS.cancel()}catch(e){}}
+function vStop(){V.seq++;V.speaking=false;V.cur=null;if(V.ok)try{SS.cancel()}catch(e){}}
+function vSay(txt){if(!V.ok||V.broken||!gestured||!txt)return false;const o=vPick(),seq=++V.seq;
+  try{const u=new SpeechSynthesisUtterance(sayText(txt,!!(o&&isDe(o.v))));
+    if(o){u.voice=o.v;u.lang=o.v.lang}else u.lang='en-US';
+    const gp=!!(o&&GPA.test(o.v.name)),man=!!(o&&MEN.test(o.v.name));u.rate=gp?.95:.88;u.pitch=gp?1:man?1.1:.6;u.volume=1;
+    u.onstart=()=>{u._s=1;if(V.cur===u)V.ever=true};
+    u.onend=u.onerror=()=>{if(V.cur!==u)return;V.speaking=false;V.cur=null;if(!u._s&&!V.ever)vFail()};
+    const busy=SS.speaking||SS.pending;V.cur=u;V.speaking=true;V.until=performance.now()+3000+txt.length*130;
+    const go=()=>{if(seq!==V.seq)return;try{SS.speak(u)}catch(e){vFail()}};
+    if(busy){SS.cancel();setTimeout(go,90)}else go();
+    if(!V.ever)setTimeout(()=>{if(!V.ever&&V.cur===u)vFail()},4000);
+    return true}catch(e){vFail();return false}}
+document.addEventListener('visibilitychange',()=>{if(document.hidden)vStop()});
+
+function speak(text){tw.full=text||'';tw.t0=NOW;tw.n=-1;tw.done=RM||!tw.full;elTalk.classList.remove('tight');
+  elLine.innerHTML='<span></span><span class="rest"></span>';elLine.lastChild.textContent=tw.full;
+  if(elLine.scrollHeight>elTalk.clientHeight-14)elTalk.classList.add('tight');
+  const eng=vEngine();tw.mode='blip';tw.cps=42;tw.lastMum=0;
+  if(eng==='tts'&&vSay(tw.full)){tw.mode='tts';tw.cps=16}else{vStop();if(eng==='mumble'){tw.mode='mumble';tw.cps=24;tw.done=!tw.full}}
+  if(tw.done)typeTo(tw.full.length)}
+function typeTo(n){if(n===tw.n)return;tw.n=n;elLine.firstChild.textContent=tw.full.slice(0,n);elLine.lastChild.textContent=tw.full.slice(n)}
+function tickType(){if(tw.done)return;const n=Math.min(tw.full.length,Math.floor((NOW-tw.t0)*tw.cps));
+  if(n!==tw.n){if(tw.mode==='blip'){if(n%3===0)sfx.blip()}
+    else if(tw.mode==='mumble'&&NOW-tw.lastMum>.085){const m=/[aeiouy]/i.exec(tw.full.slice(Math.max(0,tw.n),n));if(m){tw.lastMum=NOW;mumble(m[0].toLowerCase())}}
+    typeTo(n)}
+  if(n>=tw.full.length)tw.done=true}
+function skipType(){tw.done=true;typeTo(tw.full.length)}
+
+function hud(){$('hudTitle').textContent=cur.k<0?'Relativity':(cur.k+1)+'. '+LEVELS[cur.k].name;
+  $('bar').firstElementChild.style.width=(cur.k<0?0:Math.round(100*cur.i/Math.max(1,cur.beats.length-1)))+'%';
+  $('btnSnd').textContent=save.muted?'Muted':'Sound'}
+function renderCtl(){const ty=beat.type,done=answered;
+  elExpr.hidden=ty!=='ask';elPad.hidden=!(ty==='ask'&&!done);elCh.hidden=!(ty==='sim'&&!done);
+  elNext.hidden=!(ty==='say'||ty==='show'||((ty==='ask'||ty==='sim')&&done));elRow.hidden=!(ty==='title'||ty==='win');
+  elTalk.classList.toggle('cine',ty==='say'||ty==='title'||ty==='win');
+  if(ty==='title'){const any=save.stars.some(s=>s>0);$('b1').textContent=any?'Continue':'Play';$('b2').textContent='Levels'}
+  if(ty==='win'){$('b1').textContent=cur.k<LEVELS.length-1?'Next level':'Play again';$('b2').textContent='Levels'}
+  hud()}
+function setBeat(b){beat=b;beatTok++;beatT0=NOW;const pre=b.pre||{};hintAt=pre.hint?NOW:-1;solvedAt=pre.solved?NOW:-1;st.hint=hintAt>=0;st.solved=solvedAt>=0;st.th=st.hint?0:-1;st.ts=st.solved?0:-1;st.sim=null;simBusy=false;
+  input='';answered=false;tries=0;qEl=null;parts.length=0;
+  if(b.type==='ask'){elExpr.innerHTML=exprHTML(b.expr);qEl=elExpr.querySelector('.q')}
+  if(b.type==='sim'){elCh.innerHTML=(b.opts||SPEEDS).map((s,i)=>'<button class="choice" type="button" data-i="'+i+'"><small>'+(b.opts?s.s:'speed')+'</small>'+(b.opts?'<span>'+s.b+'</span>':'<span class="fr"><b>'+s[0]+'</b><i>'+s[1]+'</i></span>')+'</button>').join('')}
+  renderCtl();if(b.type==='ask')fitExpr();speak(b.text)}
+function startLevel(k){cur={k,beats:LEVELS[k].beats(),i:0,stars:0};cur.beats.push({type:'win',text:'',draw:winPic});mistakes=0;$('map').hidden=true;setBeat(cur.beats[0])}
+function showTitle(){cur={k:-1,beats:[],i:0,stars:0};$('map').hidden=true;setBeat({type:'title',text:'Guten Tag! Ready for an adventure vith light, clocks and rockets?',draw:titlePic})}
+function advance(){if(cur.k<0)return;if(cur.i>=cur.beats.length-1)return;cur.i++;const b=cur.beats[cur.i];
+  if(b.type==='win'){const s=mistakes<=1?3:mistakes<=4?2:1;cur.stars=s;save.stars[cur.k]=Math.max(save.stars[cur.k]||0,s);persist();
+    const last=cur.k===LEVELS.length-1,total=save.stars.reduce((a,x)=>a+(x||0),0);
+    b.text=last?'You are now a Junior Relativity Scientist! You have '+total+' of '+LEVELS.length*3+' stars.':'Wunderbar! Level complete. You earned '+s+(s===1?' star.':' stars.');
+    sfx.win()}
+  setBeat(b)}
+function tapNext(){if(!beat)return;if(!tw.done){skipType();return}const ty=beat.type;if(ty==='say'||ty==='show'||((ty==='ask'||ty==='sim')&&answered)){sfx.tap();advance()}}
+function solved(text){answered=true;solvedAt=NOW;st.solved=true;st.ts=0;sfx.ok();burst(90,18,26,44);renderCtl();speak(text)}
+function submit(){if(!beat||beat.type!=='ask'||answered||input==='')return;
+  if(parseInt(input,10)===beat.ans){if(qEl)qEl.classList.add('ok');solved(PRAISE[praiseI++%PRAISE.length]+(beat.after?' '+beat.after:''));
+    if(!beat.after){const tok=beatTok,hold=(beat.draw.hold||2.2)*1000,go=()=>{if(tok!==beatTok)return;if(vBusy()||!tw.done){setTimeout(go,250);return}advance()};setTimeout(go,hold)}}
+  else{tries++;mistakes++;sfx.no();input='';updateQ();if(qEl&&!RM){qEl.classList.remove('bad');void qEl.offsetWidth;qEl.classList.add('bad')}
+    if(hintAt<0){hintAt=NOW;st.hint=true;st.th=0}
+    speak(tries>=3?'Ze answer is '+beat.ans+'. Type it in!':(tries===1?'Not yet! ':'Try again! ')+(beat.hint||'Look at ze picture.'))}}
+function key(k){if(!beat||beat.type!=='ask'||answered)return;if(k==='go'){submit();return}sfx.tap();if(k==='del')input=input.slice(0,-1);else if(input.length<3)input=(input==='0'?'':input)+k;updateQ()}
+function choose(i){if(!beat||beat.type!=='sim'||answered||simBusy)return;simBusy=true;simAt=NOW;st.sim={choice:i,el:0};sfx.whoosh();
+  elCh.querySelectorAll('button').forEach(b=>b.disabled=true);const tok=beatTok,pa=beat.popAt(i);
+  if(pa>=0)setTimeout(()=>{if(tok===beatTok)sfx.boom()},pa*1000);
+  setTimeout(()=>{if(tok!==beatTok)return;simBusy=false;
+    if(i===beat.ok){solved(beat.after);const bp=beat.burst||[150,58];burst(bp[0],bp[1],40,50)}
+    else{mistakes++;sfx.no();speak(beat.fail[i]);elCh.querySelectorAll('button').forEach(b=>b.disabled=false)}},beat.dur(i)*1000)}
+
+/* ---- level map ---- */
+const STARSVG=on=>'<svg viewBox="0 0 12 12"><path d="M6 0l1.8 4 4.2.4-3.2 2.9 1 4.3L6 9.4 2.2 11.6l1-4.3L0 4.4 4.2 4z" fill="'+(on?'var(--brass)':'var(--line)')+'"/></svg>';
+function openMap(){vStop();let h='<div class="map-head"><h2>Levels</h2><button class="chip" type="button" data-a="close">Back</button></div>';
+  CHAPTERS.forEach((cn,ci)=>{h+='<h3>'+cn+'</h3><div class="lv-grid">';LEVELS.forEach((L,k)=>{if(L.ch!==ci)return;const open=unlocked(k),s=save.stars[k]||0;
+    h+='<button class="lv" type="button" data-k="'+k+'"'+(open?'':' disabled')+'><b>'+(k+1)+'</b><span>'+L.name+'<em>'+(open?STARSVG(s>0)+STARSVG(s>1)+STARSVG(s>2):'locked')+'</em></span></button>'});h+='</div>'});
+  h+='<button class="chip" type="button" data-a="unlock">'+(save.all?'Lock levels again':'Grown-ups: unlock all levels')+'</button><button class="chip" type="button" data-a="title">Title screen</button>';
+  const m=$('map');m.innerHTML=h;m.hidden=false}
+/* ---- sound and voice panel ---- */
+const escH=x=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+const SAMPLE='Guten Tag! I am Albert Einstein. Ze speed of light is very fast, ja?';
+function openSound(){vStop();if(V.ok)vLoad();const sel=save.voiceName||'',row=(id,name,sub)=>'<button class="lv'+(sel===id?' on':'')+'" type="button" data-v="'+escH(id)+'"><b>'+(sel===id?'●':'○')+'</b><span>'+escH(name)+'<em>'+sub+'</em></span></button>';
+  let h='<div class="map-head"><h2>Sound</h2><button class="chip" type="button" data-a="close">Back</button></div><div class="lv-grid">'
+    +'<button class="lv'+(save.muted?'':' on')+'" type="button" data-a="mute"><span>All sound<em>'+(save.muted?'off':'on')+'</em></span></button>'
+    +'<button class="lv'+(save.voice?' on':'')+'" type="button" data-a="voice"><span>Einstein’s voice<em>'+(save.voice?'on':'off')+'</em></span></button></div>'
+    +'<h3>Einstein’s voice. Tap one to hear it.</h3><div class="vlist">'+row('','Best guess',V.ok&&!V.broken&&V.list[0]?'now using '+escH(V.list[0].v.name):'an old-man voice, if this device has one');
+  if(V.ok&&!V.broken)V.list.filter(o=>o.s>1).slice(0,14).forEach(o=>{h+=row(o.v.name,o.v.name,isDe(o.v)?'German voice, real accent':'English voice')});
+  h+=row('~mumble','Grandpa mumble','no words, works on every device')+'</div>';
+  if(!V.ok||V.broken)h+='<p>This device is not giving the game a speaking voice, so Einstein mumbles for now.</p>';
+  else if(!V.list.length)h+='<p>Your device has not listed its voices yet. Close this and open it again in a moment.</p>';
+  const m=$('map');m.innerHTML=h;m.hidden=false}
+function sample(){if(vEngine()==='tts'&&vSay(SAMPLE))return;if(vEngine()==='mumble')'ua eiaoa aieia e eeo i i ei a a'.split('').forEach((c,i)=>{if(c!==' ')setTimeout(()=>mumble(c),i*95)})}
+$('map').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;sfx.tap();const a=b.dataset.a;
+  if(b.dataset.k!==undefined)startLevel(+b.dataset.k);
+  else if(b.dataset.v!==undefined){save.voiceName=b.dataset.v;save.voice=true;save.muted=false;if(b.dataset.v!=='~mumble'&&V.ok){V.broken=false;V.ever=false}persist();openSound();hud();sample()}
+  else if(a==='close'){vStop();$('map').hidden=true}
+  else if(a==='mute'){save.muted=!save.muted;persist();openSound();hud()}
+  else if(a==='voice'){save.voice=!save.voice;persist();openSound();if(save.voice&&!save.muted)sample()}
+  else if(a==='unlock'){save.all=!save.all;persist();openMap()}else if(a==='title')showTitle()});
+
+/* ---- input wiring ---- */
+document.addEventListener('pointerdown',()=>{gestured=true},{capture:true});
+elPad.addEventListener('click',e=>{const b=e.target.closest('button');if(b)key(b.dataset.k)});
+elCh.addEventListener('click',e=>{const b=e.target.closest('button');if(b)choose(+b.dataset.i)});
+elNext.addEventListener('click',tapNext);
+$('stage').addEventListener('click',tapNext);elTalk.addEventListener('click',tapNext);
+$('btnMap').addEventListener('click',()=>{sfx.tap();openMap()});
+$('btnSnd').addEventListener('click',()=>{sfx.tap();openSound()});
+$('b1').addEventListener('click',()=>{sfx.tap();if(beat.type==='title'){let k=LEVELS.findIndex((L,i)=>!(save.stars[i]>0));if(k<0){openMap();return}startLevel(k)}
+  else if(cur.k<LEVELS.length-1)startLevel(cur.k+1);else showTitle()});
+$('b2').addEventListener('click',()=>{sfx.tap();openMap()});
+document.addEventListener('keydown',e=>{gestured=true;if(!$('map').hidden)return;
+  if(/^[0-9]$/.test(e.key)){key(e.key);return}
+  if(e.key==='Backspace'){key('del');e.preventDefault();return}
+  if(e.key==='Enter'||e.key===' '){if(e.target&&e.target.tagName==='BUTTON')return;e.preventDefault();if(beat&&beat.type==='ask'&&!answered)submit();else tapNext()}});
+
+/* ---- canvas sizing and the frame loop ---- */
+function fit(){const app=$('app'),iw=app.clientWidth-32,ih=app.clientHeight-16,reserved=36+4+100+184+8*4+10;
+  let w=Math.floor(Math.min(iw-6,528,(ih-reserved)*W/H));w=Math.max(180,w);const h=Math.round(w*H/W),dpr=Math.min(3,window.devicePixelRatio||1);
+  cv.style.width=w+'px';cv.style.height=h+'px';cv.width=Math.round(w*dpr);cv.height=Math.round(h*dpr);S=cv.width/W;if(beat&&beat.type==='ask')fitExpr()}
+let lastMs=0;
+function frame(ms){NOW=ms/1000;const dt=Math.min(.05,(ms-lastMs)/1000);lastMs=ms;
+  if(beat){tickType();st.th=hintAt<0?-1:NOW-hintAt;st.ts=solvedAt<0?-1:NOW-solvedAt;if(st.sim)st.sim.el=NOW-simAt;
+    ctx.globalAlpha=1;try{beat.draw(NOW-beatT0,st)}catch(err){if(!frame.err){frame.err=1;console.error(err)}}
+    drawParts(dt)}
+  requestAnimationFrame(frame)}
+
+/* ---- boot ---- */
+(function avatar(){try{const c=document.createElement('canvas');c.width=16;c.height=13;const x=c.getContext('2d');x.fillStyle='#3d4690';x.fillRect(0,0,16,13);
+  for(let r=0;r<13;r++)for(let k=0;k<16;k++){const ch=EIN[r][k];if(ch!=='.'){x.fillStyle=PE[ch];x.fillRect(k,r,1,1)}}$('face').src=c.toDataURL()}catch(e){}})();
+function start(data){NOW=performance.now()/1000;fit();
+  if(data&&typeof data.k==='number'&&data.k>=0&&data.k<LEVELS.length){startLevel(data.k);mistakes=data.m||0;const i=Math.min(data.i||0,cur.beats.length-2);if(i>0){cur.i=i;setBeat(cur.beats[i])}}
+  else showTitle();
+  requestAnimationFrame(frame)}
+window.addEventListener('resize',fit);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(beat&&beat.type==='ask')fitExpr()}).catch(()=>{});
+try{const hot=window.claude&&window.claude.hot;if(hot&&hot.snapshot)hot.snapshot(()=>({k:cur.k,i:cur.i,m:mistakes}));
+  if(hot&&hot.ready)hot.ready(start);else start((hot&&hot.data)||{})}catch(e){start({})}
+window.__rel={get beat(){return beat},get cur(){return cur},get answered(){return answered},get typing(){return !tw.done},get voice(){return {engine:vEngine(),broken:V.broken,pick:(vPick()||{v:{}}).v.name}},key,choose,tapNext,startLevel,sayText,LEVELS};
+})();
+</script>
+</body>
+</html>

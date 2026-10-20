@@ -1,0 +1,25 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+
+# Node tooling, if used later for local testing (e.g. npx serve, Playwright)
+node_modules/
+npm-debug.log*
+
+# Local test output
+test-results/
+playwright-report/
+.env
