@@ -11,6 +11,15 @@ A mobile web teaching game for special relativity, featuring Albert Einstein in 
 
 Relativity takes a second grader from sharing chocolate bars all the way to time dilation, length contraction and E = mc². A pixel-art Einstein with a German grandpa accent narrates each step, and every answer is a whole number typed on an on-screen keypad. It is a single self-contained `index.html` with no build step, sized for a phone.
 
+## Install on your phone
+
+Relativity is a Progressive Web App, so it can sit on your home screen like a regular app, open full screen, and play offline.
+
+- **iPhone or iPad (Safari):** open the play link, tap the **Share** button, then **Add to Home Screen**.
+- **Android (Chrome):** open the play link, tap the **⋮** menu, then **Add to Home screen** or **Install app**.
+
+The installed app keeps its own progress, separate from the browser. On iPhone, stars earned in Safari don't carry over, so use the Levels screen's grown-ups switch to unlock levels if needed.
+
 ## Levels
 
 | # | Level | What it teaches |
@@ -47,6 +56,8 @@ Open `index.html` in a browser, or serve the folder:
 python3 -m http.server 8000
 ```
 
+The offline service worker (`sw.js`) only runs when the page is served over http(s), not from a `file://` URL. After changing any game file, bump `VERSION` in `sw.js` so installed copies download the update.
+
 ## Development history
 
 The game was written by Claude (Anthropic's AI model, configured as **Claude Opus 5.5**, `claude-opus-5-5`) in the Claude app in October 2026, published as a Claude artifact, then moved to this repository.
@@ -54,6 +65,7 @@ The game was written by Claude (Anthropic's AI model, configured as **Claude Opu
 - **2026-10-10, version 1 (13 levels).** Built from the initial prompt below. An automated Playwright playthrough of every level at phone size drove the follow-up fixes: layout and text-fit, swapping the body font to DotGothic16 for readability (the first font drew 5 like S and Z like 2), redrawing the lying-down basketball player, and showing the solved values in the Slow-Down Machine.
 - **2026-10-10, version 2 (14 levels).** Added Einstein's spoken voice using the Web Speech API, with a voice picker and a mumble fallback. Added level 14, E = mc², plus a short "square first, then multiply" lesson in level 4 to build up to it.
 - **2026-10-19.** Moved to GitHub with GitHub Pages hosting.
+- **2026-10-24.** Made it an installable Progressive Web App: web app manifest, home-screen icons (a pixel-art Einstein inside a ring of light, with maskable versions for Android), iOS home-screen tags, and a service worker that caches the game and its fonts for offline play.
 
 ### Initial prompt
 
